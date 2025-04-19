@@ -12,16 +12,17 @@ func MigrateEntitiesGORM() error {
 		fmt.Println("Error migrating the database:", err)
 		return err
 	}
+	err = SeedInitialRole()
+	if err != nil {
+		fmt.Println("Error seeding initial role:", err)
+	}
 
 	err = SeedInitialUser()
 	if err != nil {
 		fmt.Println("Error seeding initial user:", err)
 		return err
 	}
-	err = SeedInitialRole()
-	if err != nil {
-		fmt.Println("Error seeding initial role:", err)
-	}
+
 	return err
 }
 func SeedInitialRole() error {
@@ -40,7 +41,7 @@ func SeedInitialRole() error {
 		if err := DB.Create(&role).Error; err != nil {
 			return fmt.Errorf("error creating initial role: %w", err)
 		}
-		fmt.Printf("✔️  Created initial role %s\n", role.Name)
+		fmt.Printf("Created initial role %s\n", role.Name)
 	}
 
 	return nil
@@ -65,19 +66,24 @@ func SeedInitialUser() error {
 		if err != nil {
 			return fmt.Errorf("error hashing password: %w", err)
 		}
+		var role RoleUser
+		if err := DB.Where("name = ?", "admin").First(&role).Error; err != nil {
+			return fmt.Errorf("error getting role: %w", err)
+		}
 
 		user := User{
 			Email:        email,
 			HashPassword: hashed,
 			FirstName:    "John",
 			LastName:     "Doe",
+			RoleID:       role.ID,
 			Enabled:      true,
 			JobPosition:  "Administrator",
 		}
 		if err := DB.Create(&user).Error; err != nil {
 			return fmt.Errorf("error creating initial user: %w", err)
 		}
-		fmt.Printf("✔️  Created initial user %s\n", email)
+		fmt.Printf("Created initial user %s\n", email)
 	}
 
 	return nil
