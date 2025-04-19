@@ -3,6 +3,7 @@ package handlers
 import (
 	"github.com/gin-gonic/gin"
 	"ia-boilerplate/src/db"
+	"ia-boilerplate/utils"
 	"net/http"
 	"strconv"
 	"time"
@@ -35,7 +36,7 @@ func GetRole(c *gin.Context) {
 }
 
 type CreateRoleRequest struct {
-	Role        string `json:"role" binding:"required"`
+	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	Enabled     bool   `json:"enabled"`
 }
@@ -47,7 +48,7 @@ func CreateRole(c *gin.Context) {
 		return
 	}
 	newRole := db.RoleUser{
-		Role:        req.Role,
+		Name:        req.Name,
 		Description: req.Description,
 		Enabled:     req.Enabled,
 		CreatedAt:   time.Now(),
@@ -62,7 +63,7 @@ func CreateRole(c *gin.Context) {
 }
 
 type UpdateRoleRequest struct {
-	Role        string `json:"role" binding:"required"`
+	Name        string `json:"name" binding:"required"`
 	Description string `json:"description"`
 	Enabled     bool   `json:"enabled"`
 }
@@ -80,7 +81,7 @@ func UpdateRole(c *gin.Context) {
 		return
 	}
 	updatedData := db.RoleUser{
-		Role:        req.Role,
+		Name:        req.Name,
 		Description: req.Description,
 		Enabled:     req.Enabled,
 		UpdatedAt:   time.Now(),
@@ -92,7 +93,7 @@ func UpdateRole(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
 		return
 	}
-	role.Role = updatedData.Role
+	role.Name = updatedData.Name
 	role.Description = updatedData.Description
 	role.Enabled = updatedData.Enabled
 	role.UpdatedAt = time.Now()
@@ -122,7 +123,8 @@ func DeleteRole(c *gin.Context) {
 
 type CreateUserRequest struct {
 	Username    string `json:"username" binding:"required"`
-	FullName    string `json:"fullName"`
+	FirstName   string `json:"firstName"`
+	LastName    string `json:"lastName"`
 	Email       string `json:"email" binding:"required"`
 	Password    string `json:"password" binding:"required"`
 	JobPosition string `json:"jobPosition"`
@@ -132,7 +134,8 @@ type CreateUserRequest struct {
 
 type UpdateUserRequest struct {
 	Username    string `json:"username" binding:"required"`
-	FullName    string `json:"fullName"`
+	FirstName   string `json:"firstName"`
+	LastName    string `json:"lastName"`
 	Email       string `json:"email" binding:"required"`
 	Password    string `json:"password"`
 	JobPosition string `json:"jobPosition"`
@@ -172,14 +175,15 @@ func CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	hashedPassword, err := hashPassword(req.Password)
+	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 		return
 	}
 	newUser := db.User{
 		Username:     req.Username,
-		FullName:     req.FullName,
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
 		Email:        req.Email,
 		HashPassword: hashedPassword,
 		JobPosition:  req.JobPosition,
@@ -216,10 +220,11 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 	user.Username = req.Username
-	user.FullName = req.FullName
+	user.FirstName = req.FirstName
+	user.LastName = req.LastName
 	user.Email = req.Email
 	if req.Password != "" {
-		hashedPassword, err := hashPassword(req.Password)
+		hashedPassword, err := utils.HashPassword(req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 			return
@@ -251,6 +256,99 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
+}
+
+func SearchUsersPaginated(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	likeFilters := map[string]string{
+		"username":     c.Query("username_like"),
+		"first_name":   c.Query("first_name_like"),
+		"last_name":    c.Query("last_name_like"),
+		"email":        c.Query("email_like"),
+		"job_position": c.Query("job_position_like"),
+	}
+
+	matches := map[string][]string{
+		"username":     c.QueryArray("username_match"),
+		"first_name":   c.QueryArray("first_name_match"),
+		"last_name":    c.QueryArray("last_name_match"),
+		"email":        c.QueryArray("email_match"),
+		"job_position": c.QueryArray("job_position_match"),
+	}
+
+	var (
+		total int64
+		users []db.User
+	)
+
+	query := db.DB.Model(&db.User{})
+
+	for col, val := range likeFilters {
+		if val != "" {
+			query = query.Where(col+" ILIKE ?", "%"+val+"%")
+		}
+	}
+	for col, vals := range matches {
+		if len(vals) > 0 {
+			query = query.Where(col+" IN (?)", vals)
+		}
+	}
+
+	query.Count(&total)
+	query = query.Preload("Role").Preload("Devices")
+
+	offset := (page - 1) * limit
+	if res := query.Offset(offset).Limit(limit).Find(&users); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+	c.JSON(http.StatusOK, gin.H{
+		"current_page":  page,
+		"users":         users,
+		"page_size":     limit,
+		"total_pages":   totalPages,
+		"total_records": total,
+	})
+}
+
+func SearchUserCoincidencesByProperty(c *gin.Context) {
+	property := c.Query("property")
+	searchText := c.Query("search_text")
+
+	allowed := map[string]bool{
+		"username":     true,
+		"first_name":   true,
+		"last_name":    true,
+		"email":        true,
+		"job_position": true,
+	}
+	if !allowed[property] || searchText == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property or search_text"})
+		return
+	}
+
+	var results []string
+	if res := db.DB.
+		Model(&db.User{}).
+		Distinct(property).
+		Where(property+" ILIKE ?", "%"+searchText+"%").
+		Limit(20).
+		Pluck(property, &results); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Query failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
 }
 
 type CreateDeviceRequest struct {
@@ -380,4 +478,104 @@ func DeleteDevice(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Device deleted successfully"})
+}
+
+func SearchDeviceDetailsPaginated(c *gin.Context) {
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	likeFilters := map[string]string{
+		"ip_address":      c.Query("ip_address_like"),
+		"user_agent":      c.Query("user_agent_like"),
+		"device_type":     c.Query("device_type_like"),
+		"browser":         c.Query("browser_like"),
+		"browser_version": c.Query("browser_version_like"),
+		"os":              c.Query("os_like"),
+		"language":        c.Query("language_like"),
+	}
+
+	matches := map[string][]string{
+		"ip_address":      c.QueryArray("ip_address_match"),
+		"user_agent":      c.QueryArray("user_agent_match"),
+		"device_type":     c.QueryArray("device_type_match"),
+		"browser":         c.QueryArray("browser_match"),
+		"browser_version": c.QueryArray("browser_version_match"),
+		"os":              c.QueryArray("os_match"),
+		"language":        c.QueryArray("language_match"),
+	}
+
+	var (
+		total   int64
+		records []db.DeviceDetails
+	)
+
+	query := db.DB.
+		Model(&db.DeviceDetails{})
+
+	for col, val := range likeFilters {
+		if val != "" {
+			query = query.Where(col+" ILIKE ?", "%"+val+"%")
+		}
+	}
+
+	for col, vals := range matches {
+		if len(vals) > 0 {
+			query = query.Where(col+" IN (?)", vals)
+		}
+	}
+
+	query.Count(&total)
+
+	offset := (page - 1) * limit
+	if res := query.Offset(offset).Limit(limit).Find(&records); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
+		return
+	}
+
+	totalPages := int((total + int64(limit) - 1) / int64(limit))
+	c.JSON(http.StatusOK, gin.H{
+		"current_page":  page,
+		"records":       records,
+		"page_size":     limit,
+		"total_pages":   totalPages,
+		"total_records": total,
+	})
+}
+
+func SearchDeviceCoincidencesByProperty(c *gin.Context) {
+	property := c.Query("property")
+	searchText := c.Query("search_text")
+
+	allowed := map[string]bool{
+		"ip_address":      true,
+		"user_agent":      true,
+		"device_type":     true,
+		"browser":         true,
+		"browser_version": true,
+		"os":              true,
+		"language":        true,
+	}
+	if !allowed[property] || searchText == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property or search_text"})
+		return
+	}
+
+	var results []string
+	if res := db.DB.
+		Model(&db.DeviceDetails{}).
+		Distinct(property).
+		Where(property+" ILIKE ?", "%"+searchText+"%").
+		Limit(20).
+		Pluck(property, &results); res.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Query failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, results)
 }

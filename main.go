@@ -6,9 +6,8 @@ import (
 	"go.uber.org/zap"
 	"ia-boilerplate/src/db"
 	"ia-boilerplate/src/handlers"
-	"ia-boilerplate/src/infrastructure"
 	"ia-boilerplate/src/logger"
-	middlewares2 "ia-boilerplate/src/middlewares"
+	"ia-boilerplate/src/middlewares"
 	"net/http"
 	"time"
 )
@@ -19,18 +18,12 @@ func main() {
 	}
 	defer logger.Log.Sync()
 
-	// Configura salida de logs de Gin a stdout (opcional)
 	gin.DefaultWriter = zap.NewStdLog(logger.Log).Writer()
 	gin.SetMode(gin.ReleaseMode)
 
-	// Configura router con middleware zap
 	router := gin.New()
 	router.Use(logger.GinZapLogger(), gin.Recovery())
 
-	router.SetFuncMap(infrastructure.FuncMapTemplates)
-	router.LoadHTMLGlob("templates/*.*")
-
-	// Log: inicialización de base de datos
 	logger.Info("Initializing database")
 	if err := db.InitDatabase(); err != nil {
 		logger.Error("Failed to initialize database", zap.Error(err))
@@ -50,7 +43,6 @@ func main() {
 
 	SetupRoutes(router)
 
-	// Arranca el servidor
 	logger.Info("Server is running", zap.String("address", "http://localhost:8080"))
 	if err := router.Run(":8080"); err != nil {
 		logger.Error("Failed to start server", zap.Error(err))
@@ -59,18 +51,18 @@ func main() {
 }
 
 func SetupRoutes(router *gin.Engine) {
-	router.Use(middlewares2.CorsMiddleware())
-	router.Use(middlewares2.Handler)
+	router.Use(middlewares.CorsMiddleware())
+	router.Use(middlewares.Handler)
 	r := router.Group("/")
 	r.POST("/login", handlers.Login)
 	r.POST("/access-token/refresh", handlers.AccessTokenByRefreshToken)
 
 	api := r.Group("/api")
 
-	api.Use(middlewares2.JWTAuthMiddleware())
+	api.Use(middlewares.JWTAuthMiddleware())
 
 	device := api.Group("/device")
-	device.Use(middlewares2.DeviceInfoInterceptor())
+	device.Use(middlewares.DeviceInfoInterceptor())
 	device.GET("", func(c *gin.Context) {
 		if deviceInfo, exists := c.Get("deviceInfo"); exists {
 			c.JSON(http.StatusOK, deviceInfo)
@@ -107,6 +99,9 @@ func SetupRoutes(router *gin.Engine) {
 			deviceRoutes.POST("", handlers.CreateDevice)
 			deviceRoutes.PUT("/:id", handlers.UpdateDevice)
 			deviceRoutes.DELETE("/:id", handlers.DeleteDevice)
+			// SearchDeviceDetailsPaginated
+			deviceRoutes.GET("/search-paginated", handlers.SearchDeviceDetailsPaginated)
+			deviceRoutes.GET("/search-by-property", handlers.SearchDeviceCoincidencesByProperty)
 		}
 
 	}
@@ -133,16 +128,4 @@ func SetupRoutes(router *gin.Engine) {
 		icdcieRoutes.GET("/search-by-property", handlers.SearchIcdCoincidencesByProperty)
 
 	}
-
-	clientRoutes := api.Group("/clients")
-	{
-		clientRoutes.GET("", handlers.GetClients)
-		clientRoutes.GET("/:id", handlers.GetClient)
-		clientRoutes.POST("", handlers.CreateClient)
-		clientRoutes.PUT("/:id", handlers.UpdateClient)
-		clientRoutes.DELETE("/:id", handlers.DeleteClient)
-		clientRoutes.GET("/search", handlers.SearchClientsPaginated)
-		clientRoutes.GET("/search-by-property", handlers.SearchClientCoincidencesByProperty)
-	}
-
 }

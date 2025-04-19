@@ -1,22 +1,12 @@
 package db
 
 import (
-	"fmt"
 	"time"
 )
 
-func MigrateEntitiesGORM() error {
-	err := DB.AutoMigrate(&User{}, &RoleUser{}, &DeviceDetails{}, &Medicine{}, &ICDCie{}, &Client{}, &SubClient{}, &ProgramSubclient{})
-	if err != nil {
-		fmt.Println("Error migrating the database:", err)
-		return err
-	}
-	return nil
-}
-
 type RoleUser struct {
 	ID          int       `gorm:"primaryKey" json:"id"`
-	Role        string    `gorm:"unique;not null" json:"role"`
+	Name        string    `gorm:"unique;not null" json:"name"`
 	Description string    `json:"description"`
 	Enabled     bool      `gorm:"default:true" json:"enabled"`
 	CreatedAt   time.Time `gorm:"autoCreateTime" json:"createdAt"`
@@ -26,7 +16,8 @@ type RoleUser struct {
 type User struct {
 	ID           int             `gorm:"primaryKey" json:"id"`
 	Username     string          `gorm:"unique;not null" json:"username"`
-	FullName     string          `json:"fullName"`
+	FirstName    string          `json:"firstName"`
+	LastName     string          `json:"lastName"`
 	Email        string          `gorm:"unique;not null" json:"email"`
 	HashPassword string          `gorm:"not null" json:"-"`
 	JobPosition  string          `json:"jobPosition"`
@@ -51,44 +42,6 @@ type DeviceDetails struct {
 	CreatedAt      time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
 }
-
-type Client struct {
-	ID             int         `gorm:"primaryKey" json:"id"`
-	Alias          string      `gorm:"size:100" json:"alias"`
-	LegalName      string      `gorm:"size:100" json:"legalName"`
-	TIN            string      `gorm:"size:15" json:"tin"`
-	ContractNumber string      `gorm:"size:100" json:"contractNumber"`
-	FiscalAddress  string      `gorm:"size:255" json:"fiscalAddress"`
-	CreatedAt      time.Time   `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt      time.Time   `gorm:"autoUpdateTime" json:"updatedAt"`
-	IsDeleted      int         `gorm:"default:0" json:"isDeleted"`
-	SubClients     []SubClient `gorm:"foreignKey:ClientID" json:"subClients"`
-}
-
-type SubClient struct {
-	ID             int                `gorm:"primaryKey" json:"id"`
-	ClientID       int                `json:"clientId"`
-	Alias          string             `gorm:"size:100" json:"alias"`
-	ContractNumber string             `gorm:"size:100" json:"contractNumber"`
-	LegalName      string             `gorm:"size:100" json:"legalName"`
-	FiscalAddress  string             `gorm:"size:255" json:"fiscalAddress"`
-	TIN            string             `gorm:"size:15" json:"tin"`
-	CreatedAt      time.Time          `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt      time.Time          `gorm:"autoUpdateTime" json:"updatedAt"`
-	IsDeleted      int                `gorm:"default:0" json:"isDeleted"`
-	Programs       []ProgramSubclient `gorm:"foreignKey:SubclientID" json:"programs"`
-}
-
-type ProgramSubclient struct {
-	ID          int       `gorm:"primaryKey" json:"id"`
-	SubclientID int       `json:"subclientId"`
-	Name        string    `gorm:"size:100;not null" json:"name"`
-	Description string    `gorm:"type:text" json:"description"`
-	CreatedAt   time.Time `gorm:"autoCreateTime" json:"createdAt"`
-	UpdatedAt   time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
-	IsDeleted   int       `gorm:"default:0" json:"isDeleted"`
-}
-
 type ICDCie struct {
 	ID           int    `gorm:"primaryKey" json:"id"`
 	CieVersion   string `gorm:"type:varchar(2)" json:"cieVersion"`

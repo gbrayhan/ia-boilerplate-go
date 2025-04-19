@@ -110,11 +110,21 @@ func DeleteICDCie(c *gin.Context) {
 func SearchICDCiePaginated(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
-	cieLike := c.Query("cie_version_like")
-	codeLike := c.Query("code_like")
-	descLike := c.Query("description_like")
-	chapNoLike := c.Query("chapter_no_like")
-	chapTitleLike := c.Query("chapter_title_like")
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	likeFilters := map[string]string{
+		"cie_version":   c.Query("cie_version_like"),
+		"code":          c.Query("code_like"),
+		"description":   c.Query("description_like"),
+		"chapter_no":    c.Query("chapter_no_like"),
+		"chapter_title": c.Query("chapter_title_like"),
+	}
+
 	matches := map[string][]string{
 		"cie_version":   c.QueryArray("cie_version_match"),
 		"code":          c.QueryArray("code_match"),
@@ -122,35 +132,31 @@ func SearchICDCiePaginated(c *gin.Context) {
 		"chapter_no":    c.QueryArray("chapter_no_match"),
 		"chapter_title": c.QueryArray("chapter_title_match"),
 	}
+
 	var total int64
 	query := db.DB.Model(&db.ICDCie{})
-	if cieLike != "" {
-		query = query.Where("cie_version ILIKE ?", "%"+cieLike+"%")
-	}
-	if codeLike != "" {
-		query = query.Where("code ILIKE ?", "%"+codeLike+"%")
-	}
-	if descLike != "" {
-		query = query.Where("description ILIKE ?", "%"+descLike+"%")
-	}
-	if chapNoLike != "" {
-		query = query.Where("chapter_no ILIKE ?", "%"+chapNoLike+"%")
-	}
-	if chapTitleLike != "" {
-		query = query.Where("chapter_title ILIKE ?", "%"+chapTitleLike+"%")
-	}
-	for col, vals := range matches {
-		if len(vals) > 0 {
-			query = query.Where(""+col+" IN (?)", vals)
+
+	for col, val := range likeFilters {
+		if val != "" {
+			query = query.Where(col+" ILIKE ?", "%"+val+"%")
 		}
 	}
+
+	for col, vals := range matches {
+		if len(vals) > 0 {
+			query = query.Where(col+" IN (?)", vals)
+		}
+	}
+
 	query.Count(&total)
+
 	offset := (page - 1) * limit
 	var records []db.ICDCie
 	if res := query.Offset(offset).Limit(limit).Find(&records); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
 	}
+
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
 	c.JSON(http.StatusOK, gin.H{
 		"current_page":  page,

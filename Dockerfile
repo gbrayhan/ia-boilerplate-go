@@ -7,7 +7,7 @@ RUN go mod download
 
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -a -installsuffix cgo -o microservice .
+    go build -a -installsuffix cgo -o ia-boilerplate .
 
 FROM gcr.io/distroless/static:nonroot
 

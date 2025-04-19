@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"ia-boilerplate/src/db"
 	"ia-boilerplate/src/infrastructure"
+	"ia-boilerplate/utils"
 	"net/http"
 )
 
@@ -25,7 +26,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if comparePasswords(user.HashPassword, loginRequest.Password) != nil {
+	if utils.ComparePasswords(user.HashPassword, loginRequest.Password) != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
@@ -43,11 +44,12 @@ func Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"userId":       user.ID,
-		"userFullName": user.FullName,
-		"userEmail":    user.Email,
-		"accessToken":  accessToken,
-		"refreshToken": refreshToken,
+		"userId":        user.ID,
+		"userFirstName": user.FirstName,
+		"userLastName":  user.LastName,
+		"userEmail":     user.Email,
+		"accessToken":   accessToken,
+		"refreshToken":  refreshToken,
 	})
 }
 

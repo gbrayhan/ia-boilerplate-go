@@ -164,81 +164,44 @@ func SearchMedicinesPaginated(c *gin.Context) {
 		limit = 10
 	}
 
-	descriptionLike := c.Query("description_like")
-	laboratoryLike := c.Query("laboratory_like")
-	eanCodeLike := c.Query("ean_code_like")
-	satKeyLike := c.Query("sat_key_like")
-	activeIngredientLike := c.Query("active_ingredient_like")
-
-	descriptionMatches := c.QueryArray("description_match")
-	laboratoryMatches := c.QueryArray("laboratory_match")
-	eanCodeMatches := c.QueryArray("ean_code_match")
-	satKeyMatches := c.QueryArray("sat_key_match")
-	activeIngredientMatches := c.QueryArray("active_ingredient_match")
-
-	isOnCostCatalog, err := strconv.ParseBool(c.DefaultQuery("is_on_cost_catalog", "false"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid is_on_cost_catalog parameter"})
-		return
-	}
-	clientID, err := strconv.Atoi(c.DefaultQuery("client_id", "0"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client_id parameter"})
-		return
-	}
-	if isOnCostCatalog && clientID == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "client_id is required when is_on_cost_catalog is true"})
-		return
+	likeFilters := map[string]string{
+		"description":       c.Query("description_like"),
+		"laboratory":        c.Query("laboratory_like"),
+		"ean_code":          c.Query("ean_code_like"),
+		"sat_key":           c.Query("sat_key_like"),
+		"active_ingredient": c.Query("active_ingredient_like"),
 	}
 
-	var medicines []db.Medicine
-	var total int64
-	today := time.Now()
-
-	query := db.DB.Model(&db.Medicine{}).Where("is_deleted = ?", false)
-
-	if descriptionLike != "" {
-		query = query.Where("description ILIKE ?", "%"+descriptionLike+"%")
-	}
-	if laboratoryLike != "" {
-		query = query.Where("laboratory ILIKE ?", "%"+laboratoryLike+"%")
-	}
-	if eanCodeLike != "" {
-		query = query.Where("ean_code ILIKE ?", "%"+eanCodeLike+"%")
-	}
-	if satKeyLike != "" {
-		query = query.Where("sat_key ILIKE ?", "%"+satKeyLike+"%")
-	}
-	if activeIngredientLike != "" {
-		query = query.Where("active_ingredient ILIKE ?", "%"+activeIngredientLike+"%")
-	}
-	if len(descriptionMatches) > 0 {
-		query = query.Where("description IN ?", descriptionMatches)
-	}
-	if len(laboratoryMatches) > 0 {
-		query = query.Where("laboratory IN ?", laboratoryMatches)
-	}
-	if len(eanCodeMatches) > 0 {
-		query = query.Where("ean_code IN ?", eanCodeMatches)
-	}
-	if len(satKeyMatches) > 0 {
-		query = query.Where("sat_key IN ?", satKeyMatches)
-	}
-	if len(activeIngredientMatches) > 0 {
-		query = query.Where("active_ingredient IN ?", activeIngredientMatches)
+	matches := map[string][]string{
+		"description":       c.QueryArray("description_match"),
+		"laboratory":        c.QueryArray("laboratory_match"),
+		"ean_code":          c.QueryArray("ean_code_match"),
+		"sat_key":           c.QueryArray("sat_key_match"),
+		"active_ingredient": c.QueryArray("active_ingredient_match"),
 	}
 
-	if isOnCostCatalog {
-		query = query.Joins("JOIN medicine_costs mc ON mc.medicine_id = medicines.id AND mc.client_id = ? AND ? BETWEEN mc.start_effective_date AND mc.end_effective_date", clientID, today).Distinct("medicines.*")
+	var (
+		medicines []db.Medicine
+		total     int64
+	)
+
+	query := db.DB.
+		Model(&db.Medicine{}).
+		Where("is_deleted = ?", false)
+
+	for col, val := range likeFilters {
+		if val != "" {
+			query = query.Where(col+" ILIKE ?", "%"+val+"%")
+		}
+	}
+
+	for col, vals := range matches {
+		if len(vals) > 0 {
+			query = query.Where(col+" IN (?)", vals)
+		}
 	}
 
 	query.Count(&total)
-
-	if isOnCostCatalog {
-		query = query.Preload("MedicineCost", func(tx *gorm.DB) *gorm.DB {
-			return tx.Where("client_id = ? AND ? BETWEEN start_effective_date AND end_effective_date", clientID, today)
-		})
-	}
 
 	offset := (page - 1) * limit
 	if err := query.Offset(offset).Limit(limit).Find(&medicines).Error; err != nil {
@@ -248,21 +211,11 @@ func SearchMedicinesPaginated(c *gin.Context) {
 
 	totalPages := int((total + int64(limit) - 1) / int64(limit))
 	c.JSON(http.StatusOK, gin.H{
-		"current_page":            page,
-		"medicines":               medicines,
-		"page_size":               limit,
-		"description_like":        descriptionLike,
-		"laboratory_like":         laboratoryLike,
-		"ean_code_like":           eanCodeLike,
-		"sat_key_like":            satKeyLike,
-		"active_ingredient_like":  activeIngredientLike,
-		"description_match":       descriptionMatches,
-		"laboratory_match":        laboratoryMatches,
-		"ean_code_match":          eanCodeMatches,
-		"sat_key_match":           satKeyMatches,
-		"active_ingredient_match": activeIngredientMatches,
-		"total_pages":             totalPages,
-		"total_records":           total,
+		"current_page":  page,
+		"medicines":     medicines,
+		"page_size":     limit,
+		"total_pages":   totalPages,
+		"total_records": total,
 	})
 }
 
