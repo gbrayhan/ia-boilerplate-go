@@ -1,0 +1,15 @@
+.idea
+uploads/
+.env
+
+
+*.log
+*.tmp
+*.txt
+
+archives/tmp/
+ia-boilerplate-go
+
+
+build-local.sh
+proyect-content.txt
