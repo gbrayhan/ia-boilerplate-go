@@ -2,7 +2,6 @@
 uploads/
 .env
 
-
 *.log
 *.tmp
 *.txt
@@ -10,6 +9,7 @@ uploads/
 archives/tmp/
 ia-boilerplate-go
 
-
 build-local.sh
 proyect-content.txt
+
+IA-Driver

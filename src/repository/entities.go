@@ -1,5 +1,7 @@
 package repository
 
+// IMPORTANT: in this file you will find the entities that are used in the database and only in the database
+
 import (
 	"time"
 )
