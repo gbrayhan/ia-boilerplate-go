@@ -2,9 +2,7 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"ia-boilerplate/src/db"
-	"ia-boilerplate/src/infrastructure"
-	"ia-boilerplate/utils"
+	"ia-boilerplate/src/repository"
 	"net/http"
 )
 
@@ -13,31 +11,31 @@ type LoginRequest struct {
 	Password string `json:"password" binding:"required"`
 }
 
-func Login(c *gin.Context) {
+func (h *Handler) Login(c *gin.Context) {
 	var loginRequest LoginRequest
 	if err := c.ShouldBindJSON(&loginRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var user db.User
-	result := db.DB.Preload("Role").Preload("Devices").Where("email = ?", loginRequest.Email).First(&user)
+	var user repository.User
+	result := h.Repository.DB.Preload("Role").Preload("Devices").Where("email = ?", loginRequest.Email).First(&user)
 	if result.Error != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid credentials"})
 		return
 	}
 
-	if utils.ComparePasswords(user.HashPassword, loginRequest.Password) != nil {
+	if h.Infrastructure.ComparePasswords(user.HashPassword, loginRequest.Password) != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	accessToken, err := infrastructure.GenerateAccessToken(user.ID)
+	accessToken, err := h.Infrastructure.GenerateAccessToken(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return
 	}
 
-	refreshToken, err := infrastructure.GenerateRefreshToken(user.ID)
+	refreshToken, err := h.Infrastructure.GenerateRefreshToken(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return
@@ -57,19 +55,19 @@ type AccessTokenByRefreshTokenRequest struct {
 	RefreshToken string `json:"refreshToken" binding:"required"`
 }
 
-func AccessTokenByRefreshToken(c *gin.Context) {
+func (h *Handler) AccessTokenByRefreshToken(c *gin.Context) {
 	var request AccessTokenByRefreshTokenRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	jwt, err := infrastructure.CheckRefreshToken(request.RefreshToken)
+	jwt, err := h.Infrastructure.CheckRefreshToken(request.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
-	claims, err := infrastructure.GetClaims(jwt)
+	claims, err := h.Infrastructure.GetClaims(jwt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return
@@ -78,14 +76,14 @@ func AccessTokenByRefreshToken(c *gin.Context) {
 	userID := claims["user_id"].(float64)
 	userIDInt := int(userID)
 
-	var user db.User
-	result := db.DB.Preload("Role").Preload("Devices").First(&user, userIDInt)
+	var user repository.User
+	result := h.Repository.DB.Preload("Role").Preload("Devices").First(&user, userIDInt)
 	if result.Error != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
 
-	accessToken, err := infrastructure.GenerateAccessToken(userIDInt)
+	accessToken, err := h.Infrastructure.GenerateAccessToken(userIDInt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return

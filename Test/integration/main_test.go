@@ -4,7 +4,6 @@ import (
 	"github.com/cucumber/godog"
 	"os"
 	"testing"
-	"time"
 )
 
 func TestIntegration(t *testing.T) {
@@ -18,7 +17,7 @@ func TestIntegration(t *testing.T) {
 					// si tu main está en cmd/server/main.go:
 					// cmd/server/main.Main()
 				}()
-				time.Sleep(3 * time.Second)
+				//time.Sleep(3 * time.Second)
 			})
 		},
 		Options: &godog.Options{

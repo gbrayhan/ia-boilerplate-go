@@ -1,129 +1,171 @@
 package infrastructure
 
 import (
+	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v4"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/golang-jwt/jwt/v4"
+	"go.uber.org/zap"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func generateToken(userID int, issuer string, accessSecretKey string, accessTokenTTL time.Duration) (string, error) {
+// generateToken creates a JWT token with the given user ID, issuer, secret key, and TTL
+func (i *Infrastructure) generateToken(userID int, issuer, secretKey string, ttl time.Duration) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID,
 		"iss":     issuer,
-		"exp":     time.Now().Add(accessTokenTTL).Unix(),
+		"exp":     time.Now().Add(ttl).Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(accessSecretKey))
+	signed, err := token.SignedString([]byte(secretKey))
 	if err != nil {
-		return "", fmt.Errorf("failed to generate access token: %w", err)
+		i.Logger.Error("Failed to generate token", zap.Error(err))
+		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
-
-	return signedToken, nil
+	return signed, nil
 }
 
-func GenerateAccessToken(userId int) (string, error) {
+// GenerateAccessToken issues a JWT access token for the given user ID
+func (i *Infrastructure) GenerateAccessToken(userID int) (string, error) {
 	issuer := os.Getenv("JWT_ISSUER")
 	if issuer == "" {
-		return "", fmt.Errorf("JWT_ISSUER environment variable is not set")
+		i.Logger.Error("Environment variable not set", zap.String("var", "JWT_ISSUER"))
+		return "", errors.New("JWT_ISSUER environment variable is not set")
+
 	}
 
-	accessSecretKey := os.Getenv("ACCESS_SECRET_KEY")
-	if accessSecretKey == "" {
+	secret := os.Getenv("ACCESS_SECRET_KEY")
+	if secret == "" {
+		i.Logger.Error("Environment variable not set", zap.String("var", "ACCESS_SECRET_KEY"))
 		return "", fmt.Errorf("ACCESS_SECRET_KEY environment variable is not set")
 	}
 
-	accessTokenTTL, err := getEnvAsDuration("ACCESS_TOKEN_TTL", 15*time.Minute)
+	ttl, err := i.getEnvAsDuration("ACCESS_TOKEN_TTL", 15*time.Minute)
 	if err != nil {
+		i.Logger.Error("Failed to parse ACCESS_TOKEN_TTL", zap.Error(err))
 		return "", fmt.Errorf("failed to parse ACCESS_TOKEN_TTL: %w", err)
 	}
-	token, err := generateToken(userId, issuer, accessSecretKey, accessTokenTTL)
+
+	tok, err := i.generateToken(userID, issuer, secret, ttl)
 	if err != nil {
+		i.Logger.Error("Failed to generate access token", zap.Error(err))
 		return "", err
 	}
-
-	return token, nil
+	return tok, nil
 }
 
-func GenerateRefreshToken(userId int) (string, error) {
+// GenerateRefreshToken issues a JWT refresh token for the given user ID
+func (i *Infrastructure) GenerateRefreshToken(userID int) (string, error) {
 	issuer := os.Getenv("JWT_ISSUER")
 	if issuer == "" {
+		i.Logger.Error("Environment variable not set", zap.String("var", "JWT_ISSUER"))
 		return "", fmt.Errorf("JWT_ISSUER environment variable is not set")
 	}
-	refreshSecretKey := os.Getenv("REFRESH_SECRET_KEY")
-	if refreshSecretKey == "" {
+
+	secret := os.Getenv("REFRESH_SECRET_KEY")
+	if secret == "" {
+		i.Logger.Error("Environment variable not set", zap.String("var", "REFRESH_SECRET_KEY"))
 		return "", fmt.Errorf("REFRESH_SECRET_KEY environment variable is not set")
 	}
 
-	refreshTokenTTL, err := getEnvAsDuration("REFRESH_TOKEN_TTL", 15*time.Minute)
+	ttl, err := i.getEnvAsDuration("REFRESH_TOKEN_TTL", 7*24*time.Hour)
 	if err != nil {
+		i.Logger.Error("Failed to parse REFRESH_TOKEN_TTL", zap.Error(err))
 		return "", fmt.Errorf("failed to parse REFRESH_TOKEN_TTL: %w", err)
 	}
-	token, err := generateToken(userId, issuer, refreshSecretKey, refreshTokenTTL)
+
+	tok, err := i.generateToken(userID, issuer, secret, ttl)
 	if err != nil {
 		return "", err
 	}
-
-	return token, nil
+	return tok, nil
 }
 
-func CheckAccessToken(tokenString string) (*jwt.Token, error) {
-	accessSecretKey := os.Getenv("ACCESS_SECRET_KEY")
-	if accessSecretKey == "" {
+// CheckAccessToken validates the access token string
+func (i *Infrastructure) CheckAccessToken(tokenString string) (*jwt.Token, error) {
+	secret := os.Getenv("ACCESS_SECRET_KEY")
+	if secret == "" {
+		i.Logger.Error("Environment variable not set", zap.String("var", "ACCESS_SECRET_KEY"))
 		return nil, fmt.Errorf("ACCESS_SECRET_KEY environment variable is not set")
 	}
-
-	return checkToken(tokenString, accessSecretKey)
+	return i.checkToken(tokenString, secret)
 }
 
-func CheckRefreshToken(tokenString string) (*jwt.Token, error) {
-	refreshSecretKey := os.Getenv("REFRESH_SECRET_KEY")
-	if refreshSecretKey == "" {
+// CheckRefreshToken validates the refresh token string
+func (i *Infrastructure) CheckRefreshToken(tokenString string) (*jwt.Token, error) {
+	secret := os.Getenv("REFRESH_SECRET_KEY")
+	if secret == "" {
+		i.Logger.Error("Environment variable not set", zap.String("var", "REFRESH_SECRET_KEY"))
 		return nil, fmt.Errorf("REFRESH_SECRET_KEY environment variable is not set")
 	}
-
-	return checkToken(tokenString, refreshSecretKey)
+	return i.checkToken(tokenString, secret)
 }
 
-func GetClaims(token *jwt.Token) (jwt.MapClaims, error) {
+// GetClaims extracts JWT claims as a MapClaims
+func (i *Infrastructure) GetClaims(token *jwt.Token) (jwt.MapClaims, error) {
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
+		i.Logger.Error("Invalid token claims type")
 		return nil, fmt.Errorf("invalid token claims")
 	}
 	return claims, nil
 }
 
-func checkToken(tokenString, secretKey string) (*jwt.Token, error) {
+// checkToken parses and verifies a JWT token string with the given secret
+func (i *Infrastructure) checkToken(tokenString, secret string) (*jwt.Token, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			i.Logger.Error("Unexpected signing method", zap.String("alg", token.Header["alg"].(string)))
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return []byte(secretKey), nil
+		return []byte(secret), nil
 	})
 
 	if err != nil {
+		i.Logger.Error("Token validation failed", zap.Error(err))
 		return nil, fmt.Errorf("token validation failed: %w", err)
 	}
 
 	if !token.Valid {
+		i.Logger.Warn("Invalid token")
 		return nil, fmt.Errorf("invalid token")
 	}
 
 	return token, nil
 }
 
-func getEnvAsDuration(key string, defaultVal time.Duration) (time.Duration, error) {
-	valStr := os.Getenv(key)
-	if valStr == "" {
+// getEnvAsDuration reads an env var as integer minutes, with fallback default
+func (i *Infrastructure) getEnvAsDuration(key string, defaultVal time.Duration) (time.Duration, error) {
+	val := os.Getenv(key)
+	if val == "" {
 		return defaultVal, nil
 	}
-
-	valInt, err := strconv.Atoi(valStr)
+	minutes, err := strconv.Atoi(val)
 	if err != nil {
+		i.Logger.Error("Invalid duration value", zap.String("var", key), zap.Error(err))
 		return 0, fmt.Errorf("invalid value for %s: %w", key, err)
 	}
+	return time.Duration(minutes) * time.Minute, nil
+}
 
-	return time.Duration(valInt) * time.Minute, nil
+// HashPassword encrypts a plaintext password using bcrypt
+func (i *Infrastructure) HashPassword(password string) (string, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		i.Logger.Error("Error hashing password", zap.Error(err))
+		return "", err
+	}
+	return string(hash), nil
+}
+
+func (i *Infrastructure) ComparePasswords(hashedPassword, password string) error {
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		i.Logger.Warn("Password comparison failed", zap.Error(err))
+	}
+	return err
 }

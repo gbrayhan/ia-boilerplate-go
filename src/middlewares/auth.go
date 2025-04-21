@@ -2,14 +2,14 @@ package middlewares
 
 import (
 	"github.com/golang-jwt/jwt/v4"
-	"ia-boilerplate/src/infrastructure"
+	"ia-boilerplate/src/handlers"
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func JWTAuthMiddleware() gin.HandlerFunc {
+func JWTAuthMiddleware(handler *handlers.Handler) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
@@ -30,7 +30,7 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 		var tokenClaims *jwt.Token
 		var err error
 
-		tokenClaims, err = infrastructure.CheckAccessToken(tokenString)
+		tokenClaims, err = handler.Infrastructure.CheckAccessToken(tokenString)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})

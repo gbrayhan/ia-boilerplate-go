@@ -3,7 +3,7 @@ package middlewares
 import (
 	"errors"
 	"github.com/gin-gonic/gin"
-	"ia-boilerplate/src/db"
+	"ia-boilerplate/src/repository"
 	"net/http"
 )
 
@@ -16,27 +16,27 @@ func Handler(c *gin.Context) {
 	errs := c.Errors
 
 	if len(errs) > 0 {
-		var err *db.AppError
+		var err *repository.AppError
 		ok := errors.As(errs[0].Err, &err)
 		if ok {
 			resp := MessagesResponse{Message: err.Error()}
 			switch err.Type {
-			case db.NotFound:
+			case repository.NotFound:
 				c.JSON(http.StatusNotFound, resp)
 				return
-			case db.ValidationError:
+			case repository.ValidationError:
 				c.JSON(http.StatusBadRequest, resp)
 				return
-			case db.ResourceAlreadyExists:
+			case repository.ResourceAlreadyExists:
 				c.JSON(http.StatusConflict, resp)
 				return
-			case db.NotAuthenticated:
+			case repository.NotAuthenticated:
 				c.JSON(http.StatusUnauthorized, resp)
 				return
-			case db.NotAuthorized:
+			case repository.NotAuthorized:
 				c.JSON(http.StatusForbidden, resp)
 				return
-			case db.RepositoryError:
+			case repository.RepositoryError:
 				c.JSON(http.StatusInternalServerError, MessagesResponse{Message: "We are working to improve the flow of this request."})
 				return
 			default:

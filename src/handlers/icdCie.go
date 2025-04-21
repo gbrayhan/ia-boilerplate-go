@@ -2,28 +2,28 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"ia-boilerplate/src/db"
+	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 )
 
-func GetICDCies(c *gin.Context) {
-	var records []db.ICDCie
-	if result := db.DB.Find(&records); result.Error != nil {
+func (h *Handler) GetICDCies(c *gin.Context) {
+	var records []repository.ICDCie
+	if result := h.Repository.DB.Find(&records); result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve ICDCie records"})
 		return
 	}
 	c.JSON(http.StatusOK, records)
 }
 
-func GetICDCie(c *gin.Context) {
+func (h *Handler) GetICDCie(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	var record db.ICDCie
-	if result := db.DB.First(&record, id); result.Error != nil {
+	var record repository.ICDCie
+	if result := h.Repository.DB.First(&record, id); result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ICDCie record not found"})
 		return
 	}
@@ -38,20 +38,20 @@ type CreateICDCieRequest struct {
 	ChapterTitle string `json:"chapterTitle"`
 }
 
-func CreateICDCie(c *gin.Context) {
+func (h *Handler) CreateICDCie(c *gin.Context) {
 	var req CreateICDCieRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	record := db.ICDCie{
+	record := repository.ICDCie{
 		CieVersion:   req.CieVersion,
 		Code:         req.Code,
 		Description:  req.Description,
 		ChapterNo:    req.ChapterNo,
 		ChapterTitle: req.ChapterTitle,
 	}
-	if result := db.DB.Create(&record); result.Error != nil {
+	if result := h.Repository.DB.Create(&record); result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create ICDCie record"})
 		return
 	}
@@ -66,7 +66,7 @@ type UpdateICDCieRequest struct {
 	ChapterTitle string `json:"chapterTitle"`
 }
 
-func UpdateICDCie(c *gin.Context) {
+func (h *Handler) UpdateICDCie(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
@@ -77,8 +77,8 @@ func UpdateICDCie(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var record db.ICDCie
-	if res := db.DB.First(&record, id); res.Error != nil {
+	var record repository.ICDCie
+	if res := h.Repository.DB.First(&record, id); res.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ICDCie record not found"})
 		return
 	}
@@ -87,27 +87,27 @@ func UpdateICDCie(c *gin.Context) {
 	record.Description = req.Description
 	record.ChapterNo = req.ChapterNo
 	record.ChapterTitle = req.ChapterTitle
-	if save := db.DB.Save(&record); save.Error != nil {
+	if save := h.Repository.DB.Save(&record); save.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update ICDCie record"})
 		return
 	}
 	c.JSON(http.StatusOK, record)
 }
 
-func DeleteICDCie(c *gin.Context) {
+func (h *Handler) DeleteICDCie(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	if res := db.DB.Delete(&db.ICDCie{}, id); res.Error != nil {
+	if res := h.Repository.DB.Delete(&repository.ICDCie{}, id); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not delete ICDCie record"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "ICDCie record deleted successfully"})
 }
 
-func SearchICDCiePaginated(c *gin.Context) {
+func (h *Handler) SearchICDCiePaginated(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	if page < 1 {
@@ -134,7 +134,7 @@ func SearchICDCiePaginated(c *gin.Context) {
 	}
 
 	var total int64
-	query := db.DB.Model(&db.ICDCie{})
+	query := h.Repository.DB.Model(&repository.ICDCie{})
 
 	for col, val := range likeFilters {
 		if val != "" {
@@ -151,7 +151,7 @@ func SearchICDCiePaginated(c *gin.Context) {
 	query.Count(&total)
 
 	offset := (page - 1) * limit
-	var records []db.ICDCie
+	var records []repository.ICDCie
 	if res := query.Offset(offset).Limit(limit).Find(&records); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Search failed"})
 		return
@@ -167,7 +167,7 @@ func SearchICDCiePaginated(c *gin.Context) {
 	})
 }
 
-func SearchIcdCoincidencesByProperty(c *gin.Context) {
+func (h *Handler) SearchIcdCoincidencesByProperty(c *gin.Context) {
 	property := c.Query("property")
 	searchText := c.Query("search_text")
 	allowed := map[string]bool{"cie_version": true, "code": true, "description": true, "chapter_no": true, "chapter_title": true}
@@ -176,7 +176,7 @@ func SearchIcdCoincidencesByProperty(c *gin.Context) {
 		return
 	}
 	var results []string
-	if res := db.DB.Model(&db.ICDCie{}).
+	if res := h.Repository.DB.Model(&repository.ICDCie{}).
 		Distinct(property).
 		Where(property+" ILIKE ?", "%"+searchText+"%").
 		Limit(20).

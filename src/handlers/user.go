@@ -2,16 +2,15 @@ package handlers
 
 import (
 	"github.com/gin-gonic/gin"
-	"ia-boilerplate/src/db"
-	"ia-boilerplate/utils"
+	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-func GetRoles(c *gin.Context) {
-	var roles []db.RoleUser
-	result := db.DB.Find(&roles)
+func (h *Handler) GetRoles(c *gin.Context) {
+	var roles []repository.RoleUser
+	result := h.Repository.DB.Find(&roles)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve roles"})
 		return
@@ -19,15 +18,15 @@ func GetRoles(c *gin.Context) {
 	c.JSON(http.StatusOK, roles)
 }
 
-func GetRole(c *gin.Context) {
+func (h *Handler) GetRole(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	var role db.RoleUser
-	result := db.DB.First(&role, id)
+	var role repository.RoleUser
+	result := h.Repository.DB.First(&role, id)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
 		return
@@ -41,20 +40,20 @@ type CreateRoleRequest struct {
 	Enabled     bool   `json:"enabled"`
 }
 
-func CreateRole(c *gin.Context) {
+func (h *Handler) CreateRole(c *gin.Context) {
 	var req CreateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newRole := db.RoleUser{
+	newRole := repository.RoleUser{
 		Name:        req.Name,
 		Description: req.Description,
 		Enabled:     req.Enabled,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
-	result := db.DB.Create(&newRole)
+	result := h.Repository.DB.Create(&newRole)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create role"})
 		return
@@ -68,7 +67,7 @@ type UpdateRoleRequest struct {
 	Enabled     bool   `json:"enabled"`
 }
 
-func UpdateRole(c *gin.Context) {
+func (h *Handler) UpdateRole(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
@@ -80,15 +79,15 @@ func UpdateRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	updatedData := db.RoleUser{
+	updatedData := repository.RoleUser{
 		Name:        req.Name,
 		Description: req.Description,
 		Enabled:     req.Enabled,
 		UpdatedAt:   time.Now(),
 	}
 
-	var role db.RoleUser
-	result := db.DB.First(&role, id)
+	var role repository.RoleUser
+	result := h.Repository.DB.First(&role, id)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
 		return
@@ -97,7 +96,7 @@ func UpdateRole(c *gin.Context) {
 	role.Description = updatedData.Description
 	role.Enabled = updatedData.Enabled
 	role.UpdatedAt = time.Now()
-	saveResult := db.DB.Save(&role)
+	saveResult := h.Repository.DB.Save(&role)
 
 	if saveResult.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update role"})
@@ -106,14 +105,14 @@ func UpdateRole(c *gin.Context) {
 	c.JSON(http.StatusOK, role)
 }
 
-func DeleteRole(c *gin.Context) {
+func (h *Handler) DeleteRole(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	result := db.DB.Delete(&db.RoleUser{}, id)
+	result := h.Repository.DB.Delete(&repository.RoleUser{}, id)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not delete role"})
 		return
@@ -143,9 +142,9 @@ type UpdateUserRequest struct {
 	Enabled     bool   `json:"enabled"`
 }
 
-func GetUsers(c *gin.Context) {
-	var users []db.User
-	result := db.DB.Preload("Role").Preload("Devices").Find(&users)
+func (h *Handler) GetUsers(c *gin.Context) {
+	var users []repository.User
+	result := h.Repository.DB.Preload("Role").Preload("Devices").Find(&users)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve users"})
 		return
@@ -153,15 +152,15 @@ func GetUsers(c *gin.Context) {
 	c.JSON(http.StatusOK, users)
 }
 
-func GetUser(c *gin.Context) {
+func (h *Handler) GetUser(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	var user db.User
-	result := db.DB.Preload("Role").Preload("Devices").First(&user, id)
+	var user repository.User
+	result := h.Repository.DB.Preload("Role").Preload("Devices").First(&user, id)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
@@ -169,18 +168,18 @@ func GetUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func CreateUser(c *gin.Context) {
+func (h *Handler) CreateUser(c *gin.Context) {
 	var req CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	hashedPassword, err := utils.HashPassword(req.Password)
+	hashedPassword, err := h.Infrastructure.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 		return
 	}
-	newUser := db.User{
+	newUser := repository.User{
 		Username:     req.Username,
 		FirstName:    req.FirstName,
 		LastName:     req.LastName,
@@ -192,7 +191,7 @@ func CreateUser(c *gin.Context) {
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
 	}
-	result := db.DB.Create(&newUser)
+	result := h.Repository.DB.Create(&newUser)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create user"})
 		return
@@ -200,7 +199,7 @@ func CreateUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, newUser)
 }
 
-func UpdateUser(c *gin.Context) {
+func (h *Handler) UpdateUser(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
@@ -212,8 +211,8 @@ func UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var user db.User
-	result := db.DB.Preload("Role").Preload("Devices").First(&user, id)
+	var user repository.User
+	result := h.Repository.DB.Preload("Role").Preload("Devices").First(&user, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
@@ -224,7 +223,7 @@ func UpdateUser(c *gin.Context) {
 	user.LastName = req.LastName
 	user.Email = req.Email
 	if req.Password != "" {
-		hashedPassword, err := utils.HashPassword(req.Password)
+		hashedPassword, err := h.Infrastructure.HashPassword(req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 			return
@@ -235,7 +234,7 @@ func UpdateUser(c *gin.Context) {
 	user.RoleID = req.RoleID
 	user.Enabled = req.Enabled
 	user.UpdatedAt = time.Now()
-	saveResult := db.DB.Save(&user)
+	saveResult := h.Repository.DB.Save(&user)
 	if saveResult.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update user"})
 		return
@@ -243,14 +242,14 @@ func UpdateUser(c *gin.Context) {
 	c.JSON(http.StatusOK, user)
 }
 
-func DeleteUser(c *gin.Context) {
+func (h *Handler) DeleteUser(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	result := db.DB.Delete(&db.User{}, id)
+	result := h.Repository.DB.Delete(&repository.User{}, id)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete user"})
 		return
@@ -258,7 +257,7 @@ func DeleteUser(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
 }
 
-func SearchUsersPaginated(c *gin.Context) {
+func (h *Handler) SearchUsersPaginated(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	if page < 1 {
@@ -286,10 +285,10 @@ func SearchUsersPaginated(c *gin.Context) {
 
 	var (
 		total int64
-		users []db.User
+		users []repository.User
 	)
 
-	query := db.DB.Model(&db.User{})
+	query := h.Repository.DB.Model(&repository.User{})
 
 	for col, val := range likeFilters {
 		if val != "" {
@@ -321,7 +320,7 @@ func SearchUsersPaginated(c *gin.Context) {
 	})
 }
 
-func SearchUserCoincidencesByProperty(c *gin.Context) {
+func (h *Handler) SearchUserCoincidencesByProperty(c *gin.Context) {
 	property := c.Query("property")
 	searchText := c.Query("search_text")
 
@@ -338,8 +337,8 @@ func SearchUserCoincidencesByProperty(c *gin.Context) {
 	}
 
 	var results []string
-	if res := db.DB.
-		Model(&db.User{}).
+	if res := h.Repository.DB.
+		Model(&repository.User{}).
 		Distinct(property).
 		Where(property+" ILIKE ?", "%"+searchText+"%").
 		Limit(20).
@@ -372,15 +371,15 @@ type UpdateDeviceRequest struct {
 	Language       string `json:"language"`
 }
 
-func GetDevicesByUser(c *gin.Context) {
+func (h *Handler) GetDevicesByUser(c *gin.Context) {
 	userIDParam := c.Param("userId")
 	userID, err := strconv.Atoi(userIDParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 		return
 	}
-	var devices []db.DeviceDetails
-	result := db.DB.Where("user_id = ?", userID).Find(&devices)
+	var devices []repository.DeviceDetails
+	result := h.Repository.DB.Where("user_id = ?", userID).Find(&devices)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve devices"})
 		return
@@ -388,15 +387,15 @@ func GetDevicesByUser(c *gin.Context) {
 	c.JSON(http.StatusOK, devices)
 }
 
-func GetDevice(c *gin.Context) {
+func (h *Handler) GetDevice(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	var device db.DeviceDetails
-	result := db.DB.First(&device, id)
+	var device repository.DeviceDetails
+	result := h.Repository.DB.First(&device, id)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
 		return
@@ -404,13 +403,13 @@ func GetDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
-func CreateDevice(c *gin.Context) {
+func (h *Handler) CreateDevice(c *gin.Context) {
 	var req CreateDeviceRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	newDevice := db.DeviceDetails{
+	newDevice := repository.DeviceDetails{
 		UserID:         req.UserID,
 		IPAddress:      req.IPAddress,
 		UserAgent:      req.UserAgent,
@@ -422,7 +421,7 @@ func CreateDevice(c *gin.Context) {
 		CreatedAt:      time.Now(),
 		UpdatedAt:      time.Now(),
 	}
-	result := db.DB.Create(&newDevice)
+	result := h.Repository.DB.Create(&newDevice)
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create device"})
 		return
@@ -430,7 +429,7 @@ func CreateDevice(c *gin.Context) {
 	c.JSON(http.StatusCreated, newDevice)
 }
 
-func UpdateDevice(c *gin.Context) {
+func (h *Handler) UpdateDevice(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
@@ -442,8 +441,8 @@ func UpdateDevice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var device db.DeviceDetails
-	result := db.DB.First(&device, id)
+	var device repository.DeviceDetails
+	result := h.Repository.DB.First(&device, id)
 	if result.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
 		return
@@ -456,7 +455,7 @@ func UpdateDevice(c *gin.Context) {
 	device.OS = req.OS
 	device.Language = req.Language
 	device.UpdatedAt = time.Now()
-	saveResult := db.DB.Save(&device)
+	saveResult := h.Repository.DB.Save(&device)
 	if saveResult.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update device"})
 		return
@@ -464,14 +463,14 @@ func UpdateDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, device)
 }
 
-func DeleteDevice(c *gin.Context) {
+func (h *Handler) DeleteDevice(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
-	result := db.DB.Delete(&db.DeviceDetails{}, id)
+	result := h.Repository.DB.Delete(&repository.DeviceDetails{}, id)
 
 	if result.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not delete device"})
@@ -480,7 +479,7 @@ func DeleteDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Device deleted successfully"})
 }
 
-func SearchDeviceDetailsPaginated(c *gin.Context) {
+func (h *Handler) SearchDeviceDetailsPaginated(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	if page < 1 {
@@ -512,11 +511,11 @@ func SearchDeviceDetailsPaginated(c *gin.Context) {
 
 	var (
 		total   int64
-		records []db.DeviceDetails
+		records []repository.DeviceDetails
 	)
 
-	query := db.DB.
-		Model(&db.DeviceDetails{})
+	query := h.Repository.DB.
+		Model(&repository.DeviceDetails{})
 
 	for col, val := range likeFilters {
 		if val != "" {
@@ -548,7 +547,7 @@ func SearchDeviceDetailsPaginated(c *gin.Context) {
 	})
 }
 
-func SearchDeviceCoincidencesByProperty(c *gin.Context) {
+func (h *Handler) SearchDeviceCoincidencesByProperty(c *gin.Context) {
 	property := c.Query("property")
 	searchText := c.Query("search_text")
 
@@ -567,8 +566,8 @@ func SearchDeviceCoincidencesByProperty(c *gin.Context) {
 	}
 
 	var results []string
-	if res := db.DB.
-		Model(&db.DeviceDetails{}).
+	if res := h.Repository.DB.
+		Model(&repository.DeviceDetails{}).
 		Distinct(property).
 		Where(property+" ILIKE ?", "%"+searchText+"%").
 		Limit(20).

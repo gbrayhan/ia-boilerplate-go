@@ -4,10 +4,11 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
 	"go.uber.org/zap"
-	"ia-boilerplate/src/db"
 	"ia-boilerplate/src/handlers"
+	"ia-boilerplate/src/infrastructure"
 	"ia-boilerplate/src/logger"
 	"ia-boilerplate/src/middlewares"
+	"ia-boilerplate/src/repository"
 	"net/http"
 	"time"
 )
@@ -20,16 +21,22 @@ func main() {
 
 	gin.DefaultWriter = zap.NewStdLog(logger.Log).Writer()
 	gin.SetMode(gin.ReleaseMode)
-
 	router := gin.New()
 	router.Use(logger.GinZapLogger(), gin.Recovery())
 
+	infra := infrastructure.NewInfrastructure(logger.Log)
+	repo := &repository.Repository{
+		Infrastructure: infra,
+		Logger:         logger.Log,
+	}
 	logger.Info("Initializing database")
-	if err := db.InitDatabase(); err != nil {
+	if err := repo.InitDatabase(); err != nil {
 		logger.Error("Failed to initialize database", zap.Error(err))
 		panic(err)
 	}
 	logger.Info("Database initialized", zap.Time("at", time.Now()))
+
+	h := handlers.NewHandler(repo, logger.Log, infra)
 
 	c := cron.New()
 	_, err := c.AddFunc("0 1 * * *", func() {
@@ -39,27 +46,28 @@ func main() {
 		logger.Error("Error setting up cron job", zap.Error(err))
 	}
 	c.Start()
+	logger.Info("Cron scheduler started")
 	defer c.Stop()
 
-	SetupRoutes(router)
+	SetupRoutes(router, h)
+	logger.Info("Routes configured")
 
-	logger.Info("Server is running", zap.String("address", "http://localhost:8080"))
+	logger.Info("Starting server", zap.String("address", "http://localhost:8080"))
 	if err := router.Run(":8080"); err != nil {
-		logger.Error("Failed to start server", zap.Error(err))
+		logger.Error("Server failed to start", zap.Error(err))
 		panic(err)
 	}
 }
 
-func SetupRoutes(router *gin.Engine) {
+func SetupRoutes(router *gin.Engine, handler *handlers.Handler) {
 	router.Use(middlewares.CorsMiddleware())
 	router.Use(middlewares.Handler)
 	r := router.Group("/")
-	r.POST("/login", handlers.Login)
-	r.POST("/access-token/refresh", handlers.AccessTokenByRefreshToken)
-
+	r.POST("/login", handler.Login)
+	r.POST("/access-token/refresh", handler.AccessTokenByRefreshToken)
 	api := r.Group("/api")
 
-	api.Use(middlewares.JWTAuthMiddleware())
+	api.Use(middlewares.JWTAuthMiddleware(handler))
 
 	device := api.Group("/device")
 	device.Use(middlewares.DeviceInfoInterceptor())
@@ -70,6 +78,7 @@ func SetupRoutes(router *gin.Engine) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Device info not found"})
 		}
 	})
+
 	healthCheckAuth := api.Group("/health-check-auth")
 	healthCheckAuth.GET("/", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"message": "authenticated"})
@@ -77,55 +86,51 @@ func SetupRoutes(router *gin.Engine) {
 
 	userRoutes := api.Group("/users")
 	{
-		userRoutes.GET("", handlers.GetUsers)
-		userRoutes.GET("/:id", handlers.GetUser)
-		userRoutes.POST("", handlers.CreateUser)
-		userRoutes.PUT("/:id", handlers.UpdateUser)
-		userRoutes.DELETE("/:id", handlers.DeleteUser)
+		userRoutes.GET("", handler.GetUsers)
+		userRoutes.GET("/:id", handler.GetUser)
+		userRoutes.POST("", handler.CreateUser)
+		userRoutes.PUT("/:id", handler.UpdateUser)
+		userRoutes.DELETE("/:id", handler.DeleteUser)
 
 		roleRoutes := userRoutes.Group("/roles")
 		{
-			roleRoutes.GET("", handlers.GetRoles)
-			roleRoutes.GET("/:id", handlers.GetRole)
-			roleRoutes.POST("", handlers.CreateRole)
-			roleRoutes.PUT("/:id", handlers.UpdateRole)
-			roleRoutes.DELETE("/:id", handlers.DeleteRole)
+			roleRoutes.GET("", handler.GetRoles)
+			roleRoutes.GET("/:id", handler.GetRole)
+			roleRoutes.POST("", handler.CreateRole)
+			roleRoutes.PUT("/:id", handler.UpdateRole)
+			roleRoutes.DELETE("/:id", handler.DeleteRole)
 		}
 
 		deviceRoutes := userRoutes.Group("/devices")
 		{
-			deviceRoutes.GET("/user-id/:userId", handlers.GetDevicesByUser)
-			deviceRoutes.GET("/:id", handlers.GetDevice)
-			deviceRoutes.POST("", handlers.CreateDevice)
-			deviceRoutes.PUT("/:id", handlers.UpdateDevice)
-			deviceRoutes.DELETE("/:id", handlers.DeleteDevice)
-			// SearchDeviceDetailsPaginated
-			deviceRoutes.GET("/search-paginated", handlers.SearchDeviceDetailsPaginated)
-			deviceRoutes.GET("/search-by-property", handlers.SearchDeviceCoincidencesByProperty)
+			deviceRoutes.GET("/user-id/:userId", handler.GetDevicesByUser)
+			deviceRoutes.GET("/:id", handler.GetDevice)
+			deviceRoutes.POST("", handler.CreateDevice)
+			deviceRoutes.PUT("/:id", handler.UpdateDevice)
+			deviceRoutes.DELETE("/:id", handler.DeleteDevice)
+			deviceRoutes.GET("/search-paginated", handler.SearchDeviceDetailsPaginated)
+			deviceRoutes.GET("/search-by-property", handler.SearchDeviceCoincidencesByProperty)
 		}
-
 	}
 
 	medicineRoutes := api.Group("/medicines")
 	{
-		medicineRoutes.GET("/:id", handlers.GetMedicine)
-		medicineRoutes.POST("", handlers.CreateMedicine)
-		medicineRoutes.PUT("/:id", handlers.UpdateMedicine)
-		medicineRoutes.DELETE("/:id", handlers.DeleteMedicine)
-		medicineRoutes.GET("/search-paginated", handlers.SearchMedicinesPaginated)
-		medicineRoutes.GET("/search-by-property", handlers.SearchMedicineCoincidencesByProperty)
-
+		medicineRoutes.GET("/:id", handler.GetMedicine)
+		medicineRoutes.POST("", handler.CreateMedicine)
+		medicineRoutes.PUT("/:id", handler.UpdateMedicine)
+		medicineRoutes.DELETE("/:id", handler.DeleteMedicine)
+		medicineRoutes.GET("/search-paginated", handler.SearchMedicinesPaginated)
+		medicineRoutes.GET("/search-by-property", handler.SearchMedicineCoincidencesByProperty)
 	}
 
 	icdcieRoutes := api.Group("/icd-cie")
 	{
-		icdcieRoutes.GET("", handlers.GetICDCies)
-		icdcieRoutes.GET("/:id", handlers.GetICDCie)
-		icdcieRoutes.POST("", handlers.CreateICDCie)
-		icdcieRoutes.PUT("/:id", handlers.UpdateICDCie)
-		icdcieRoutes.DELETE("/:id", handlers.DeleteICDCie)
-		icdcieRoutes.GET("/search-paginated", handlers.SearchICDCiePaginated)
-		icdcieRoutes.GET("/search-by-property", handlers.SearchIcdCoincidencesByProperty)
-
+		icdcieRoutes.GET("", handler.GetICDCies)
+		icdcieRoutes.GET("/:id", handler.GetICDCie)
+		icdcieRoutes.POST("", handler.CreateICDCie)
+		icdcieRoutes.PUT("/:id", handler.UpdateICDCie)
+		icdcieRoutes.DELETE("/:id", handler.DeleteICDCie)
+		icdcieRoutes.GET("/search-paginated", handler.SearchICDCiePaginated)
+		icdcieRoutes.GET("/search-by-property", handler.SearchIcdCoincidencesByProperty)
 	}
 }

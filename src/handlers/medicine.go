@@ -4,21 +4,21 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
-	"ia-boilerplate/src/db"
+	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 	"time"
 )
 
-func GetMedicine(c *gin.Context) {
+func (h *Handler) GetMedicine(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	var m db.Medicine
-	res := db.DB.Where("id = ? AND is_deleted = ?", id, false).First(&m)
+	var m repository.Medicine
+	res := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&m)
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Medicine not found"})
@@ -45,14 +45,14 @@ type createMedicineRequest struct {
 	UnitType         string  `json:"unitType"`
 }
 
-func CreateMedicine(c *gin.Context) {
+func (h *Handler) CreateMedicine(c *gin.Context) {
 	var req createMedicineRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	m := db.Medicine{
+	m := repository.Medicine{
 		EANCode:          req.EANCode,
 		Description:      req.Description,
 		Type:             req.Type,
@@ -68,7 +68,7 @@ func CreateMedicine(c *gin.Context) {
 		UpdatedAt:        time.Now(),
 	}
 
-	if res := db.DB.Create(&m); res.Error != nil {
+	if res := h.Repository.DB.Create(&m); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create medicine"})
 		return
 	}
@@ -91,7 +91,7 @@ type updateMedicineRequest struct {
 	UnitType         string  `json:"unitType"`
 }
 
-func UpdateMedicine(c *gin.Context) {
+func (h *Handler) UpdateMedicine(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
@@ -104,9 +104,9 @@ func UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	var m db.Medicine
-	if res := db.DB.Where("id = ? AND is_deleted = ?", id, false).First(&m); res.Error != nil {
-		if res.Error == gorm.ErrRecordNotFound {
+	var m repository.Medicine
+	if res := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&m); res.Error != nil {
+		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Medicine not found"})
 		} else {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
@@ -129,7 +129,7 @@ func UpdateMedicine(c *gin.Context) {
 	m.UnitType = req.UnitType
 	m.UpdatedAt = time.Now()
 
-	if res := db.DB.Save(&m); res.Error != nil {
+	if res := h.Repository.DB.Save(&m); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update medicine"})
 		return
 	}
@@ -137,14 +137,14 @@ func UpdateMedicine(c *gin.Context) {
 	c.JSON(http.StatusOK, m)
 }
 
-func DeleteMedicine(c *gin.Context) {
+func (h *Handler) DeleteMedicine(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
 		return
 	}
 
-	if res := db.DB.Model(&db.Medicine{}).
+	if res := h.Repository.DB.Model(&repository.Medicine{}).
 		Where("id = ? AND is_deleted = ?", id, false).
 		Update("is_deleted", true); res.Error != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not delete medicine"})
@@ -154,7 +154,7 @@ func DeleteMedicine(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Medicine deleted successfully"})
 }
 
-func SearchMedicinesPaginated(c *gin.Context) {
+func (h *Handler) SearchMedicinesPaginated(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
 	if page < 1 {
@@ -181,12 +181,12 @@ func SearchMedicinesPaginated(c *gin.Context) {
 	}
 
 	var (
-		medicines []db.Medicine
+		medicines []repository.Medicine
 		total     int64
 	)
 
-	query := db.DB.
-		Model(&db.Medicine{}).
+	query := h.Repository.DB.
+		Model(&repository.Medicine{}).
 		Where("is_deleted = ?", false)
 
 	for col, val := range likeFilters {
@@ -219,7 +219,7 @@ func SearchMedicinesPaginated(c *gin.Context) {
 	})
 }
 
-func SearchMedicineCoincidencesByProperty(c *gin.Context) {
+func (h *Handler) SearchMedicineCoincidencesByProperty(c *gin.Context) {
 	property := c.Query("property")
 	searchText := c.Query("search_text")
 	allowed := map[string]bool{
@@ -235,8 +235,8 @@ func SearchMedicineCoincidencesByProperty(c *gin.Context) {
 	}
 
 	var results []string
-	if err := db.DB.
-		Model(&db.Medicine{}).
+	if err := h.Repository.DB.
+		Model(&repository.Medicine{}).
 		Distinct(property).
 		Where("is_deleted = ?", false).
 		Where(property+" ILIKE ?", "%"+searchText+"%").
