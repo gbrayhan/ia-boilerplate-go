@@ -25,10 +25,8 @@ func JWTAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Obtener el token
 		tokenString := parts[1]
 
-		// Verificar si es un Access Token o un Refresh Token
 		var tokenClaims *jwt.Token
 		var err error
 

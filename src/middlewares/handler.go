@@ -2,10 +2,9 @@ package middlewares
 
 import (
 	"errors"
+	"github.com/gin-gonic/gin"
 	"ia-boilerplate/src/db"
 	"net/http"
-
-	"github.com/gin-gonic/gin"
 )
 
 type MessagesResponse struct {

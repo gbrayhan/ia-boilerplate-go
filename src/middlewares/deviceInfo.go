@@ -1,8 +1,9 @@
 package middlewares
 
-import "github.com/gin-gonic/gin"
-
-import "github.com/mssola/user_agent"
+import (
+	"github.com/gin-gonic/gin"
+	"github.com/mssola/user_agent"
+)
 
 type DeviceInfo struct {
 	IPAddress      string `json:"ip_address"`
