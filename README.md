@@ -6,6 +6,17 @@
 
 ---
 
+## Security Checks using Trivy
+
+https://github.com/aquasecurity/trivy?tab=readme-ov-file
+
+command:
+```bash
+trivy fs . 
+```
+
+---
+
 ## 📖 Contents
 
 - [✨ Key Features](#-key-features)
