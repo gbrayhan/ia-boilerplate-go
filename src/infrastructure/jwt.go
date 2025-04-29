@@ -3,13 +3,12 @@ package infrastructure
 import (
 	"errors"
 	"fmt"
-	"os"
-	"strconv"
-	"time"
-
 	"github.com/golang-jwt/jwt/v4"
 	"go.uber.org/zap"
 	"golang.org/x/crypto/bcrypt"
+	"os"
+	"strconv"
+	"time"
 )
 
 type Auth struct {
