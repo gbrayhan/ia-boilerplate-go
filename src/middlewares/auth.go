@@ -30,7 +30,7 @@ func JWTAuthMiddleware(handler *handlers.Handler) gin.HandlerFunc {
 		var tokenClaims *jwt.Token
 		var err error
 
-		tokenClaims, err = handler.Infrastructure.CheckAccessToken(tokenString)
+		tokenClaims, err = handler.Auth.CheckAccessToken(tokenString)
 
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})

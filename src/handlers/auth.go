@@ -24,18 +24,18 @@ func (h *Handler) Login(c *gin.Context) {
 		return
 	}
 
-	if h.Infrastructure.ComparePasswords(user.HashPassword, loginRequest.Password) != nil {
+	if h.Auth.ComparePasswords(user.HashPassword, loginRequest.Password) != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
 	}
 
-	accessToken, err := h.Infrastructure.GenerateAccessToken(user.ID)
+	accessToken, err := h.Auth.GenerateAccessToken(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return
 	}
 
-	refreshToken, err := h.Infrastructure.GenerateRefreshToken(user.ID)
+	refreshToken, err := h.Auth.GenerateRefreshToken(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return
@@ -62,12 +62,12 @@ func (h *Handler) AccessTokenByRefreshToken(c *gin.Context) {
 		return
 	}
 
-	jwt, err := h.Infrastructure.CheckRefreshToken(request.RefreshToken)
+	jwt, err := h.Auth.CheckRefreshToken(request.RefreshToken)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
-	claims, err := h.Infrastructure.GetClaims(jwt)
+	claims, err := h.Auth.GetClaims(jwt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return
@@ -83,7 +83,7 @@ func (h *Handler) AccessTokenByRefreshToken(c *gin.Context) {
 		return
 	}
 
-	accessToken, err := h.Infrastructure.GenerateAccessToken(userIDInt)
+	accessToken, err := h.Auth.GenerateAccessToken(userIDInt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not authenticate"})
 		return

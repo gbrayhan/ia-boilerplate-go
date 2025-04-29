@@ -174,7 +174,7 @@ func (h *Handler) CreateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	hashedPassword, err := h.Infrastructure.HashPassword(req.Password)
+	hashedPassword, err := h.Auth.HashPassword(req.Password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 		return
@@ -223,7 +223,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 	user.LastName = req.LastName
 	user.Email = req.Email
 	if req.Password != "" {
-		hashedPassword, err := h.Infrastructure.HashPassword(req.Password)
+		hashedPassword, err := h.Auth.HashPassword(req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 			return

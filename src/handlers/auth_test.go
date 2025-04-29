@@ -5,11 +5,9 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
-	"go.uber.org/zap"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"ia-boilerplate/src/infrastructure"
-	"ia-boilerplate/src/logger"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"net/http/httptest"
@@ -18,10 +16,14 @@ import (
 )
 
 func setupAuthRouter() *gin.Engine {
-	logger.Init()
-	inf := infrastructure.NewInfrastructure(logger.Log)
+	logger, err := infrastructure.NewLogger()
+	if err != nil {
+		panic("failed to initialize logger: " + err.Error())
+	}
+
+	auth := infrastructure.NewAuth(logger)
 	db, _ := gorm.Open(sqlite.Open("file::memory:?cache=shared"), &gorm.Config{})
-	repo := &repository.Repository{DB: db, Logger: logger.Log, Infrastructure: inf}
+	repo := &repository.Repository{DB: db, Logger: logger, Auth: auth}
 	repo.DB.AutoMigrate(&repository.RoleUser{}, &repository.User{}, &repository.DeviceDetails{}, &repository.Medicine{}, &repository.ICDCie{})
 	os.Setenv("START_USER_EMAIL", "test@example.com")
 	os.Setenv("START_USER_PW", "pass123")
@@ -33,7 +35,7 @@ func setupAuthRouter() *gin.Engine {
 
 	repo.SeedInitialRole()
 	repo.SeedInitialUser()
-	h := NewHandler(repo, zap.NewNop(), inf)
+	h := NewHandler(repo, logger, auth)
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.POST("/login", h.Login)

@@ -64,7 +64,7 @@ func (r *Repository) SeedInitialUser() error {
 	}
 
 	if count == 0 {
-		hashed, err := r.Infrastructure.HashPassword(pw)
+		hashed, err := r.Auth.HashPassword(pw)
 		if err != nil {
 			r.Logger.Error("Error hashing initial user password", zap.Error(err))
 			return err

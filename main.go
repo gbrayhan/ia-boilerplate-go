@@ -6,7 +6,6 @@ import (
 	"go.uber.org/zap"
 	"ia-boilerplate/src/handlers"
 	"ia-boilerplate/src/infrastructure"
-	"ia-boilerplate/src/logger"
 	"ia-boilerplate/src/middlewares"
 	"ia-boilerplate/src/repository"
 	"net/http"
@@ -14,21 +13,30 @@ import (
 )
 
 func main() {
-	if err := logger.Init(); err != nil {
+
+	logger, err := infrastructure.NewLogger()
+	if err != nil {
 		panic("failed to initialize logger: " + err.Error())
+		return
 	}
-	defer logger.Log.Sync()
+	defer func(Log *zap.Logger) {
+		err := Log.Sync()
+		if err != nil {
+			panic("failed to sync logger: " + err.Error())
+		}
+	}(logger.Log)
 
 	gin.DefaultWriter = zap.NewStdLog(logger.Log).Writer()
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
 	router.Use(logger.GinZapLogger(), gin.Recovery())
 
-	infra := infrastructure.NewInfrastructure(logger.Log)
+	auth := infrastructure.NewAuth(logger)
 	repo := &repository.Repository{
-		Infrastructure: infra,
-		Logger:         logger.Log,
+		Auth:   auth,
+		Logger: logger,
 	}
+
 	logger.Info("Initializing database")
 	if err := repo.InitDatabase(); err != nil {
 		logger.Error("Failed to initialize database", zap.Error(err))
@@ -36,10 +44,10 @@ func main() {
 	}
 	logger.Info("Database initialized", zap.Time("at", time.Now()))
 
-	h := handlers.NewHandler(repo, logger.Log, infra)
+	h := handlers.NewHandler(repo, logger, auth)
 
 	c := cron.New()
-	_, err := c.AddFunc("0 1 * * *", func() {
+	_, err = c.AddFunc("0 1 * * *", func() {
 		logger.Info("Scheduled task executed", zap.Time("at", time.Now()))
 	})
 	if err != nil {

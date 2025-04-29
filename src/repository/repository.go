@@ -10,19 +10,19 @@ import (
 )
 
 type Repository struct {
-	DB             *gorm.DB
-	Logger         *zap.Logger
-	Infrastructure *infrastructure.Infrastructure
+	DB     *gorm.DB
+	Logger *infrastructure.Logger
+	Auth   *infrastructure.Auth
 }
 
-func NewRepository(db *gorm.DB, logger *zap.Logger) *Repository {
+func NewRepository(db *gorm.DB, logger *infrastructure.Logger) *Repository {
 	return &Repository{
 		DB:     db,
 		Logger: logger,
 	}
 }
 
-func (r *Repository) SetLogger(logger *zap.Logger) {
+func (r *Repository) SetLogger(logger *infrastructure.Logger) {
 	r.Logger = logger
 }
 
