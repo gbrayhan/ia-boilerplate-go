@@ -84,7 +84,7 @@ func (l *GormZapLogger) Warn(ctx context.Context, msg string, data ...interface{
 
 func (l *GormZapLogger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.config.LogLevel >= gormlogger.Error &&
-		!(l.config.IgnoreRecordNotFoundError && msg == gormlogger.ErrRecordNotFound.Error()) {
+		!(l.config.IgnoreRecordNotFoundError && errors.Is(errors.New(msg), gormlogger.ErrRecordNotFound)) {
 		l.zap.Errorf(msg, data...)
 	}
 }
