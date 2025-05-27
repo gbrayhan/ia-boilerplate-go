@@ -5,6 +5,7 @@ import (
 	"go.uber.org/zap"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	"ia-boilerplate/src/infrastructure"
 	"os"
 )
@@ -83,7 +84,12 @@ func (r *Repository) InitDatabase() error {
 		return err
 	}
 
-	r.DB, err = gorm.Open(postgres.Open(cfg.GetDSN()), &gorm.Config{})
+	gormZap := infrastructure.NewGormLogger(r.Logger.Log).
+		LogMode(gormlogger.Warn)
+
+	r.DB, err = gorm.Open(postgres.Open(cfg.GetDSN()), &gorm.Config{
+		Logger: gormZap,
+	})
 	if err != nil {
 		r.Logger.Error("Error connecting to the database", zap.Error(err))
 		return err
