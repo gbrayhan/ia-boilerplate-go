@@ -126,10 +126,11 @@ Feature: User Management
   Scenario: TC06 - Create a new user successfully
     Given I generate a unique alias as "newUserUsername"
     And I generate a unique alias as "newUserEmail"
+    And I generate a unique alias as "userRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "TestRoleForUser",
+        "name": "${userRoleName}",
         "description": "Role for user creation test",
         "enabled": true
       }
@@ -175,10 +176,11 @@ Feature: User Management
   Scenario: TC08 - Retrieve a specific user
     Given I generate a unique alias as "retrieveUserUsername"
     And I generate a unique alias as "retrieveUserEmail"
+    And I generate a unique alias as "retrieveUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "RetrieveUserRole",
+        "name": "${retrieveUserRoleName}",
         "description": "Role for user retrieval test",
         "enabled": true
       }
@@ -212,10 +214,11 @@ Feature: User Management
   Scenario: TC09 - Update an existing user
     Given I generate a unique alias as "updateUserUsername"
     And I generate a unique alias as "updateUserEmail"
+    And I generate a unique alias as "updateUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "UpdateUserRole",
+        "name": "${updateUserRoleName}",
         "description": "Role for user update test",
         "enabled": true
       }
@@ -261,10 +264,11 @@ Feature: User Management
   Scenario: TC10 - Delete a user
     Given I generate a unique alias as "deleteUserUsername"
     And I generate a unique alias as "deleteUserEmail"
+    And I generate a unique alias as "deleteUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "DeleteUserRole",
+        "name": "${deleteUserRoleName}",
         "description": "Role for user deletion test",
         "enabled": true
       }
@@ -293,10 +297,11 @@ Feature: User Management
   Scenario: TC11 - Create a new device successfully
     Given I generate a unique alias as "deviceUserUsername"
     And I generate a unique alias as "deviceUserEmail"
+    And I generate a unique alias as "deviceUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "DeviceUserRole",
+        "name": "${deviceUserRoleName}",
         "description": "Role for device test",
         "enabled": true
       }
@@ -350,10 +355,11 @@ Feature: User Management
   Scenario: TC12 - Retrieve devices by user ID
     Given I generate a unique alias as "devicesUserUsername"
     And I generate a unique alias as "devicesUserEmail"
+    And I generate a unique alias as "devicesUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "DevicesUserRole",
+        "name": "${devicesUserRoleName}",
         "description": "Role for devices retrieval test",
         "enabled": true
       }
@@ -393,10 +399,11 @@ Feature: User Management
   Scenario: TC13 - Retrieve a specific device
     Given I generate a unique alias as "specificDeviceUserUsername"
     And I generate a unique alias as "specificDeviceUserEmail"
+    And I generate a unique alias as "specificDeviceUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "SpecificDeviceUserRole",
+        "name": "${specificDeviceUserRoleName}",
         "description": "Role for specific device test",
         "enabled": true
       }
@@ -439,10 +446,11 @@ Feature: User Management
   Scenario: TC14 - Update a device
     Given I generate a unique alias as "updateDeviceUserUsername"
     And I generate a unique alias as "updateDeviceUserEmail"
+    And I generate a unique alias as "updateDeviceUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "UpdateDeviceUserRole",
+        "name": "${updateDeviceUserRoleName}",
         "description": "Role for device update test",
         "enabled": true
       }
@@ -498,10 +506,11 @@ Feature: User Management
   Scenario: TC15 - Delete a device
     Given I generate a unique alias as "deleteDeviceUserUsername"
     And I generate a unique alias as "deleteDeviceUserEmail"
+    And I generate a unique alias as "deleteDeviceUserRoleName"
     And I send a POST request to "/api/users/roles" with body:
       """
       {
-        "name": "DeleteDeviceUserRole",
+        "name": "${deleteDeviceUserRoleName}",
         "description": "Role for device deletion test",
         "enabled": true
       }
