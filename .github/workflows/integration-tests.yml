@@ -1,0 +1,174 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      feature_file:
+        description: 'Feature file to test (optional)'
+        required: false
+        default: ''
+      tags:
+        description: 'Tags to filter tests (optional)'
+        required: false
+        default: ''
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Make scripts executable
+      run: |
+        chmod +x scripts/run-all-integration-tests.bash
+        chmod +x scripts/run-integration-test.bash
+
+    - name: Build Docker image
+      run: docker-compose build
+
+    - name: Start services
+      run: |
+        docker-compose up -d postgres
+        # Wait for database to be ready
+        sleep 10
+
+    - name: Run integration tests
+      env:
+        INTEGRATION_TEST_MODE: true
+        INTEGRATION_FEATURE_FILE: ${{ github.event.inputs.feature_file }}
+        INTEGRATION_SCENARIO_TAGS: ${{ github.event.inputs.tags }}
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable
+      run: |
+        if [ -n "${{ github.event.inputs.feature_file }}" ]; then
+          ./scripts/run-all-integration-tests.bash -f ${{ github.event.inputs.feature_file }} -v
+        elif [ -n "${{ github.event.inputs.tags }}" ]; then
+          ./scripts/run-all-integration-tests.bash -t ${{ github.event.inputs.tags }} -v
+        else
+          ./scripts/run-all-integration-tests.bash -v
+        fi
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: integration-test-results
+        path: |
+          Test/integration/test-results/
+          *.log
+        retention-days: 7
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down
+        docker system prune -f
+
+  smoke-tests:
+    runs-on: ubuntu-latest
+    needs: integration-tests
+    
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+          POSTGRES_USER: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Make scripts executable
+      run: chmod +x scripts/run-all-integration-tests.bash
+
+    - name: Build Docker image
+      run: docker-compose build
+
+    - name: Start services
+      run: |
+        docker-compose up -d postgres
+        sleep 10
+
+    - name: Run smoke tests
+      env:
+        INTEGRATION_TEST_MODE: true
+        INTEGRATION_SCENARIO_TAGS: "@smoke"
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable
+      run: |
+        ./scripts/run-all-integration-tests.bash -t @smoke -v
+
+    - name: Cleanup
+      if: always()
+      run: |
+        docker-compose down
+        docker system prune -f
+
+  test-report:
+    runs-on: ubuntu-latest
+    needs: [integration-tests, smoke-tests]
+    if: always()
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download test results
+      uses: actions/download-artifact@v3
+      with:
+        name: integration-test-results
+
+    - name: Generate test report
+      run: |
+        echo "## Integration Test Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Smoke Tests: ${{ needs.smoke-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [ -f "test-results.json" ]; then
+          echo "### Detailed Results" >> $GITHUB_STEP_SUMMARY
+          cat test-results.json >> $GITHUB_STEP_SUMMARY
+        fi 
