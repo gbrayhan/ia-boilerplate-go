@@ -827,6 +827,12 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 		currentScenarioID = generateUUID()
 		scenarioResources = []string{}
 		skipNextTracking = false
+
+		// Ensure we have a valid authentication token for each scenario
+		if token, exists := savedVars["accessToken"]; !exists || token == "" {
+			createTestUserDirectly()
+		}
+
 		return ctx, nil
 	})
 
