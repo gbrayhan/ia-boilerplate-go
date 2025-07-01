@@ -57,3 +57,19 @@ Feature: User Login and Token Refresh
     When I send a GET request to "/api/medicines/1"
     Then the response code should be 401
     And the JSON response should contain error "error": "Authorization header not provided"
+
+  # Re-authenticate so subsequent scenarios have a valid token
+  Scenario: Re-authenticate after clearing the token
+    When I send a POST request to "/login" with body:
+      """
+      {
+        "email": "${START_USER_EMAIL}",
+        "password": "${START_USER_PW}"
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain key "accessToken"
+    And the JSON response should contain key "refreshToken"
+    And the JSON response should contain "email": "${START_USER_EMAIL}"
+    And I save the JSON response key "accessToken" as "accessToken"
+    And I save the JSON response key "refreshToken" as "refreshToken"
