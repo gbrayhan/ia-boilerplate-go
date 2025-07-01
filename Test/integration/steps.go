@@ -396,16 +396,17 @@ func iSaveTheJSONResponseKeyAs(key, varName string) error {
 	if strings.HasSuffix(key, "Id") || strings.HasSuffix(key, "ID") || key == "id" {
 		// Determine the resource type based on the context
 		resourceType := "unknown"
-		if strings.Contains(lastRequestPath, "/users") {
-			resourceType = "user"
-		} else if strings.Contains(lastRequestPath, "/medicines") {
-			resourceType = "medicine"
-		} else if strings.Contains(lastRequestPath, "/icd-cie") {
-			resourceType = "icd-cie"
+		// Match more specific paths first to ensure correct resource type
+		if strings.Contains(lastRequestPath, "/roles") {
+			resourceType = "role"
 		} else if strings.Contains(lastRequestPath, "/devices") {
 			resourceType = "device"
-		} else if strings.Contains(lastRequestPath, "/roles") {
-			resourceType = "role"
+		} else if strings.Contains(lastRequestPath, "/icd-cie") {
+			resourceType = "icd-cie"
+		} else if strings.Contains(lastRequestPath, "/medicines") {
+			resourceType = "medicine"
+		} else if strings.Contains(lastRequestPath, "/users") {
+			resourceType = "user"
 		}
 
 		if resourceType != "unknown" {
