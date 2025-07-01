@@ -290,7 +290,7 @@ Feature: User Management
     And I save the JSON response key "id" as "deleteUserID"
     When I send a DELETE request to "/api/users/${deleteUserID}"
     Then the response code should be 200
-    And the JSON response should contain "message": "User deleted successfully"
+    And the JSON response should contain "message": "user deleted successfully"
 
   # ===== DEVICES MANAGEMENT =====
 
