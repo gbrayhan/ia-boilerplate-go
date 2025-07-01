@@ -7,8 +7,27 @@ import (
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+	"unicode"
 )
+
+var (
+	validMedicineTypes    = map[string]bool{"tableta": true, "capsula": true}
+	validTemperatureCtrls = map[string]bool{"seco": true, "temperatura_controlada": true}
+	validUnitTypes        = map[string]bool{"tabletas": true, "capsulas": true}
+)
+
+func snakeCase(s string) string {
+	var out []rune
+	for i, r := range s {
+		if unicode.IsUpper(r) && i > 0 {
+			out = append(out, '_')
+		}
+		out = append(out, unicode.ToLower(r))
+	}
+	return string(out)
+}
 
 func (h *Handler) GetMedicine(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
@@ -39,7 +58,7 @@ type createMedicineRequest struct {
 	IVA              string  `json:"iva"`
 	SatKey           string  `json:"satKey"`
 	ActiveIngredient string  `json:"activeIngredient"`
-	ColdChain        bool    `json:"coldChain"`
+	TemperatureCtrl  string  `json:"temperatureControl"`
 	IsControlled     bool    `json:"isControlled"`
 	UnitQuantity     float64 `json:"unitQuantity"`
 	UnitType         string  `json:"unitType"`
@@ -52,6 +71,19 @@ func (h *Handler) CreateMedicine(c *gin.Context) {
 		return
 	}
 
+	if !validMedicineTypes[req.Type] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid medicine type"})
+		return
+	}
+	if req.TemperatureCtrl != "" && !validTemperatureCtrls[req.TemperatureCtrl] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid temperature control"})
+		return
+	}
+	if req.UnitType != "" && !validUnitTypes[req.UnitType] {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid unit type"})
+		return
+	}
+
 	m := repository.Medicine{
 		EANCode:          req.EANCode,
 		Description:      req.Description,
@@ -59,8 +91,9 @@ func (h *Handler) CreateMedicine(c *gin.Context) {
 		Laboratory:       req.Laboratory,
 		IVA:              req.IVA,
 		SatKey:           req.SatKey,
+		TemperatureCtrl:  req.TemperatureCtrl,
 		ActiveIngredient: req.ActiveIngredient,
-		ColdChain:        req.ColdChain,
+		ColdChain:        false,
 		IsControlled:     req.IsControlled,
 		UnitQuantity:     req.UnitQuantity,
 		UnitType:         req.UnitType,
@@ -69,26 +102,15 @@ func (h *Handler) CreateMedicine(c *gin.Context) {
 	}
 
 	if res := h.Repository.DB.Create(&m); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create medicine"})
+		if strings.Contains(res.Error.Error(), "duplicate key value") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Could not create medicine: " + res.Error.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create medicine"})
+		}
 		return
 	}
 
 	c.JSON(http.StatusCreated, m)
-}
-
-type updateMedicineRequest struct {
-	EANCode          string  `json:"eanCode" binding:"required"`
-	Description      string  `json:"description" binding:"required"`
-	Type             string  `json:"type" binding:"required"`
-	Laboratory       string  `json:"laboratory"`
-	IVA              string  `json:"iva"`
-	SatKey           string  `json:"satKey"`
-	ActiveIngredient string  `json:"activeIngredient"`
-	ColdChain        bool    `json:"coldChain"`
-	IsControlled     bool    `json:"isControlled"`
-	IsDeleted        bool    `json:"isDeleted"`
-	UnitQuantity     float64 `json:"unitQuantity"`
-	UnitType         string  `json:"unitType"`
 }
 
 func (h *Handler) UpdateMedicine(c *gin.Context) {
@@ -98,9 +120,14 @@ func (h *Handler) UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	var req updateMedicineRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
+	var payload map[string]interface{}
+	if err := c.ShouldBindJSON(&payload); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(payload) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one field must be provided for update"})
 		return
 	}
 
@@ -114,26 +141,52 @@ func (h *Handler) UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	// Asignar campos
-	m.EANCode = req.EANCode
-	m.Description = req.Description
-	m.Type = req.Type
-	m.Laboratory = req.Laboratory
-	m.IVA = req.IVA
-	m.SatKey = req.SatKey
-	m.ActiveIngredient = req.ActiveIngredient
-	m.ColdChain = req.ColdChain
-	m.IsControlled = req.IsControlled
-	m.IsDeleted = req.IsDeleted
-	m.UnitQuantity = req.UnitQuantity
-	m.UnitType = req.UnitType
-	m.UpdatedAt = time.Now()
+	updates := map[string]interface{}{}
+	for k, v := range payload {
+		switch k {
+		case "type":
+			s, ok := v.(string)
+			if !ok || !validMedicineTypes[s] {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid medicine type"})
+				return
+			}
+			updates["type"] = s
+		case "temperatureControl":
+			s, ok := v.(string)
+			if !ok || !validTemperatureCtrls[s] {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid temperature control"})
+				return
+			}
+			updates["temperature_ctrl"] = s
+		case "unitType":
+			s, ok := v.(string)
+			if !ok || !validUnitTypes[s] {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid unit type"})
+				return
+			}
+			updates["unit_type"] = s
+		case "eanCode", "description", "laboratory", "iva", "satKey", "activeIngredient", "isControlled", "unitQuantity", "coldChain", "isDeleted":
+			updates[snakeCase(k)] = v
+		}
+	}
 
-	if res := h.Repository.DB.Save(&m); res.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update medicine"})
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one field must be provided for update"})
 		return
 	}
 
+	updates["updated_at"] = time.Now()
+
+	if err := h.Repository.DB.Model(&m).Updates(updates).Error; err != nil {
+		if strings.Contains(err.Error(), "duplicate key value") {
+			c.JSON(http.StatusConflict, gin.H{"error": "Could not update medicine: " + err.Error()})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update medicine"})
+		}
+		return
+	}
+
+	h.Repository.DB.First(&m, id)
 	c.JSON(http.StatusOK, m)
 }
 
@@ -230,7 +283,7 @@ func (h *Handler) SearchMedicineCoincidencesByProperty(c *gin.Context) {
 		"active_ingredient": true,
 	}
 	if !allowed[property] || searchText == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property or search_text"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid property"})
 		return
 	}
 

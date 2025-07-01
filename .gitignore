@@ -8,9 +8,10 @@ uploads/
 
 archives/tmp/
 ia-boilerplate-go
-
+device_service
 build-local.sh
 proyect-content.txt
 
 IA-Driver
 dev-aceso
+ia-boilerplate

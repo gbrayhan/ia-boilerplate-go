@@ -55,12 +55,13 @@ type ICDCie struct {
 
 type Medicine struct {
 	ID               int       `gorm:"primaryKey" json:"id"`
-	EANCode          string    `gorm:"type:varchar(30)" json:"eanCode"`
+	EANCode          string    `gorm:"type:varchar(30);unique" json:"eanCode"`
 	Description      string    `gorm:"type:varchar(150)" json:"description"`
 	Type             string    `gorm:"type:varchar(50)" json:"type"`
 	Laboratory       string    `gorm:"type:varchar(50)" json:"laboratory"`
 	IVA              string    `gorm:"type:varchar(5)" json:"iva"`
 	SatKey           string    `gorm:"type:varchar(50)" json:"satKey"`
+	TemperatureCtrl  string    `gorm:"type:varchar(50)" json:"temperatureControl"`
 	ActiveIngredient string    `gorm:"type:varchar(150)" json:"activeIngredient"`
 	CreatedAt        time.Time `gorm:"autoCreateTime" json:"createdAt"`
 	UpdatedAt        time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
