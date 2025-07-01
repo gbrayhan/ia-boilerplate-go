@@ -211,6 +211,9 @@ func theJSONResponseShouldContain(field, value string) error {
 		return fmt.Errorf("response body is nil")
 	}
 
+	// Substitute any saved or environment variables in the expected value
+	value = replaceVars(value)
+
 	var response map[string]interface{}
 	if err := json.Unmarshal(body, &response); err != nil {
 		return fmt.Errorf("failed to parse JSON response: %v", err)
