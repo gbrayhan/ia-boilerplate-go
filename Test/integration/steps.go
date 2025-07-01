@@ -463,9 +463,7 @@ func replaceVars(s string) string {
 }
 
 func addAuthHeader(req *http.Request) {
-	logger.Printf("DEBUG: addAuthHeader called, savedVars: %v", savedVars)
 	if token, exists := savedVars["accessToken"]; exists && token != "" {
-		logger.Printf("DEBUG: Adding Authorization header with token: %s", token)
 		req.Header.Set("Authorization", "Bearer "+token)
 	} else {
 		logger.Printf("DEBUG: No accessToken found in savedVars. exists: %t, token: %v", exists, token)
