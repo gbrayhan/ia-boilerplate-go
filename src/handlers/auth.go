@@ -42,12 +42,12 @@ func (h *Handler) Login(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"userId":        user.ID,
-		"userFirstName": user.FirstName,
-		"userLastName":  user.LastName,
-		"userEmail":     user.Email,
-		"accessToken":   accessToken,
-		"refreshToken":  refreshToken,
+		"id":           user.ID,
+		"firstName":    user.FirstName,
+		"lastName":     user.LastName,
+		"email":        user.Email,
+		"accessToken":  accessToken,
+		"refreshToken": refreshToken,
 	})
 }
 
@@ -90,9 +90,9 @@ func (h *Handler) AccessTokenByRefreshToken(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"accessToken":  accessToken,
-		"userId":       user.ID,
-		"userUsername": user.Username,
-		"userEmail":    user.Email,
+		"accessToken": accessToken,
+		"id":          user.ID,
+		"username":    user.Username,
+		"email":       user.Email,
 	})
 }
