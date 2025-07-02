@@ -3,18 +3,66 @@ package infrastructure
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	gormlogger "gorm.io/gorm/logger"
-	"time"
 )
 
 type Logger struct {
 	Log *zap.Logger
 }
 
+// customCallerEncoder personaliza el formato del caller para mostrar solo la ruta desde src/
+func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
+	fullPath := caller.TrimmedPath()
+
+	// Buscar la posición de "src/" en la ruta
+	srcIndex := strings.Index(fullPath, "src/")
+	if srcIndex != -1 {
+		// Si encontramos "src/", mostrar solo desde ahí
+		shortPath := fullPath[srcIndex:]
+		enc.AppendString(shortPath)
+	} else {
+		// Si no encontramos "src/", mostrar solo el nombre del archivo
+		parts := strings.Split(fullPath, "/")
+		if len(parts) > 0 {
+			enc.AppendString(parts[len(parts)-1])
+		} else {
+			enc.AppendString(fullPath)
+		}
+	}
+}
+
 func NewLogger() (*Logger, error) {
-	logger, err := zap.NewProduction()
+	// Configurar timezone de CDMX
+	cdmxLocation, err := time.LoadLocation("America/Mexico_City")
+	if err != nil {
+		// Si no se puede cargar la timezone de CDMX, usar UTC
+		cdmxLocation = time.UTC
+	}
+
+	// Configuración personalizada del encoder
+	encoderConfig := zap.NewProductionEncoderConfig()
+	encoderConfig.TimeKey = "ts"
+	encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		// Convertir a timezone de CDMX y formatear como RFC3339
+		cdmxTime := t.In(cdmxLocation)
+		enc.AppendString(cdmxTime.Format(time.RFC3339))
+	}
+	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	encoderConfig.EncodeCaller = customCallerEncoder
+
+	// Crear el logger con la configuración personalizada
+	config := zap.NewProductionConfig()
+	config.EncoderConfig = encoderConfig
+	config.Development = false
+	config.DisableCaller = false
+	config.DisableStacktrace = true
+	logger, err := config.Build(zap.AddCallerSkip(1))
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +90,8 @@ func (l *Logger) GinZapLogger() gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		latency := time.Since(start)
-		l.Log.Info("HTTP request", zap.String("method", c.Request.Method), zap.String("path", c.Request.URL.Path), zap.Int("status", c.Writer.Status()), zap.Duration("latency", latency), zap.String("client_ip", c.ClientIP()))
+		// Para logs de HTTP requests, no mostrar caller ya que siempre será desde el middleware
+		l.Log.WithOptions(zap.AddCallerSkip(1)).Info("HTTP request", zap.String("method", c.Request.Method), zap.String("path", c.Request.URL.Path), zap.Int("status", c.Writer.Status()), zap.Duration("latency", latency), zap.String("client_ip", c.ClientIP()))
 	}
 }
 
@@ -56,9 +105,9 @@ func NewGormLogger(base *zap.Logger) *GormZapLogger {
 	return &GormZapLogger{
 		zap: sugar,
 		config: gormlogger.Config{
-			SlowThreshold:             time.Second,
+			SlowThreshold:             time.Second, // umbral para destacar consultas lentas
 			LogLevel:                  gormlogger.Error,
-			IgnoreRecordNotFoundError: true,
+			IgnoreRecordNotFoundError: true, // no loguear "record not found"
 			Colorful:                  false,
 		},
 	}
@@ -84,7 +133,7 @@ func (l *GormZapLogger) Warn(ctx context.Context, msg string, data ...interface{
 
 func (l *GormZapLogger) Error(ctx context.Context, msg string, data ...interface{}) {
 	if l.config.LogLevel >= gormlogger.Error &&
-		!(l.config.IgnoreRecordNotFoundError && errors.Is(errors.New(msg), gormlogger.ErrRecordNotFound)) {
+		(!l.config.IgnoreRecordNotFoundError || msg != gormlogger.ErrRecordNotFound.Error()) {
 		l.zap.Errorf(msg, data...)
 	}
 }
