@@ -89,11 +89,11 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 		return
 	}
 
-	// Preparar los campos a actualizar
+	// Prepare fields to update
 	updates := make(map[string]interface{})
 	updates["updated_at"] = time.Now()
 
-	// Actualizar solo los campos que están presentes en el request
+	// Update only the fields present in the request
 	if req.Name != nil {
 		updates["name"] = *req.Name
 	}
@@ -104,13 +104,13 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 		updates["enabled"] = *req.Enabled
 	}
 
-	// Si no hay campos para actualizar, retornar error
+	// Return an error if there are no fields to update
 	if len(updates) <= 1 { // Solo updated_at
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// Realizar la actualización
+	// Perform the update
 	if err := h.Repository.DB.Model(&repository.RoleUser{}).
 		Where("id = ?", id).
 		Updates(updates).Error; err != nil {
@@ -235,18 +235,18 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// Verificar que el usuario existe
+	// Verify the user exists
 	var existingUser repository.User
 	if err := h.Repository.DB.Preload("Role").Preload("Devices").First(&existingUser, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
-	// Preparar los campos a actualizar
+	// Prepare fields to update
 	updates := make(map[string]interface{})
 	updates["updated_at"] = time.Now()
 
-	// Validar y agregar cada campo si está presente en el request
+	// Validate and add each field if present in the request
 	if req.Username != nil {
 		updates["username"] = *req.Username
 	}
@@ -284,13 +284,13 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		updates["enabled"] = *req.Enabled
 	}
 
-	// Si no hay campos para actualizar, retornar error
+	// Return an error if there are no fields to update
 	if len(updates) <= 1 { // Solo updated_at
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// Realizar la actualización
+	// Perform the update
 	if err := h.Repository.DB.Model(&repository.User{}).
 		Where("id = ?", id).
 		Updates(updates).Error; err != nil {
@@ -298,7 +298,7 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// Obtener el usuario actualizado
+	// Retrieve the updated user
 	var updatedUser repository.User
 	if err := h.Repository.DB.Preload("Role").Preload("Devices").First(&updatedUser, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated user"})
@@ -508,18 +508,18 @@ func (h *Handler) UpdateDevice(c *gin.Context) {
 		return
 	}
 
-	// Verificar que el dispositivo existe
+	// Verify the device exists
 	var existingDevice repository.DeviceDetails
 	if err := h.Repository.DB.First(&existingDevice, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
 		return
 	}
 
-	// Preparar los campos a actualizar
+	// Prepare fields to update
 	updates := make(map[string]interface{})
 	updates["updated_at"] = time.Now()
 
-	// Validar y agregar cada campo si está presente en el request
+	// Validate and add each field if present in the request
 	if req.IPAddress != nil {
 		updates["ip_address"] = *req.IPAddress
 	}
@@ -548,13 +548,13 @@ func (h *Handler) UpdateDevice(c *gin.Context) {
 		updates["language"] = *req.Language
 	}
 
-	// Si no hay campos para actualizar, retornar error
+	// Return an error if there are no fields to update
 	if len(updates) <= 1 { // Solo updated_at
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// Realizar la actualización
+	// Perform the update
 	if err := h.Repository.DB.Model(&repository.DeviceDetails{}).
 		Where("id = ?", id).
 		Updates(updates).Error; err != nil {
@@ -562,7 +562,7 @@ func (h *Handler) UpdateDevice(c *gin.Context) {
 		return
 	}
 
-	// Obtener el dispositivo actualizado
+	// Retrieve the updated device
 	var updatedDevice repository.DeviceDetails
 	if err := h.Repository.DB.First(&updatedDevice, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated device"})

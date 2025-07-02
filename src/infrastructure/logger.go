@@ -16,18 +16,18 @@ type Logger struct {
 	Log *zap.Logger
 }
 
-// customCallerEncoder personaliza el formato del caller para mostrar solo la ruta desde src/
+// customCallerEncoder formats the caller path to show only the portion starting from src/
 func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayEncoder) {
 	fullPath := caller.TrimmedPath()
 
-	// Buscar la posición de "src/" en la ruta
+	// Find the position of "src/" in the path
 	srcIndex := strings.Index(fullPath, "src/")
 	if srcIndex != -1 {
-		// Si encontramos "src/", mostrar solo desde ahí
+		// If "src/" is found, keep only that part of the path
 		shortPath := fullPath[srcIndex:]
 		enc.AppendString(shortPath)
 	} else {
-		// Si no encontramos "src/", mostrar solo el nombre del archivo
+		// If "src/" is not found, show only the file name
 		parts := strings.Split(fullPath, "/")
 		if len(parts) > 0 {
 			enc.AppendString(parts[len(parts)-1])
@@ -38,25 +38,25 @@ func customCallerEncoder(caller zapcore.EntryCaller, enc zapcore.PrimitiveArrayE
 }
 
 func NewLogger() (*Logger, error) {
-	// Configurar timezone de CDMX
+	// Configure Mexico City timezone
 	cdmxLocation, err := time.LoadLocation("America/Mexico_City")
 	if err != nil {
-		// Si no se puede cargar la timezone de CDMX, usar UTC
+		// Use UTC if the Mexico City timezone cannot be loaded
 		cdmxLocation = time.UTC
 	}
 
-	// Configuración personalizada del encoder
+	// Custom encoder configuration
 	encoderConfig := zap.NewProductionEncoderConfig()
 	encoderConfig.TimeKey = "ts"
 	encoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-		// Convertir a timezone de CDMX y formatear como RFC3339
+		// Convert to Mexico City timezone and format as RFC3339
 		cdmxTime := t.In(cdmxLocation)
 		enc.AppendString(cdmxTime.Format(time.RFC3339))
 	}
 	encoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
 	encoderConfig.EncodeCaller = customCallerEncoder
 
-	// Crear el logger con la configuración personalizada
+	// Create the logger with the custom configuration
 	config := zap.NewProductionConfig()
 	config.EncoderConfig = encoderConfig
 	config.Development = false
@@ -90,7 +90,7 @@ func (l *Logger) GinZapLogger() gin.HandlerFunc {
 		start := time.Now()
 		c.Next()
 		latency := time.Since(start)
-		// Para logs de HTTP requests, no mostrar caller ya que siempre será desde el middleware
+		// Skip caller information for HTTP requests since it always originates from middleware
 		l.Log.WithOptions(zap.AddCallerSkip(1)).Info("HTTP request", zap.String("method", c.Request.Method), zap.String("path", c.Request.URL.Path), zap.Int("status", c.Writer.Status()), zap.Duration("latency", latency), zap.String("client_ip", c.ClientIP()))
 	}
 }
@@ -105,9 +105,9 @@ func NewGormLogger(base *zap.Logger) *GormZapLogger {
 	return &GormZapLogger{
 		zap: sugar,
 		config: gormlogger.Config{
-			SlowThreshold:             time.Second, // umbral para destacar consultas lentas
+			SlowThreshold:             time.Second, // threshold to highlight slow queries
 			LogLevel:                  gormlogger.Error,
-			IgnoreRecordNotFoundError: true, // no loguear "record not found"
+			IgnoreRecordNotFoundError: true, // do not log "record not found"
 			Colorful:                  false,
 		},
 	}
