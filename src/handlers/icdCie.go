@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"errors"
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
@@ -44,6 +46,14 @@ func (h *Handler) CreateICDCie(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	var existing repository.ICDCie
+	if err := h.Repository.DB.Where("code = ?", req.Code).First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Could not create ICDCie record: duplicate code"})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create ICDCie record"})
+		return
+	}
 	record := repository.ICDCie{
 		CieVersion:   req.CieVersion,
 		Code:         req.Code,
@@ -81,6 +91,16 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 	if res := h.Repository.DB.First(&record, id); res.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ICDCie record not found"})
 		return
+	}
+	if req.Code != record.Code {
+		var existing repository.ICDCie
+		if err := h.Repository.DB.Where("code = ?", req.Code).First(&existing).Error; err == nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "Could not update ICDCie record: duplicate code"})
+			return
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update ICDCie record"})
+			return
+		}
 	}
 	record.CieVersion = req.CieVersion
 	record.Code = req.Code
