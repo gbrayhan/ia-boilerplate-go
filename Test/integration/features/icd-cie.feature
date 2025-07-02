@@ -133,7 +133,82 @@ Feature: ICD-CIE Management
     And the JSON response should contain "chapterNo": "VII"
     And the JSON response should contain "chapterTitle": "Diseases of the eye and adnexa"
 
-  Scenario: TC04.1 - Attempt to update a non-existent ICD-CIE record
+  Scenario: TC04.1 - Update ICD-CIE record with partial fields (only description)
+    Given I generate a unique alias as "partialUpdateCieCode"
+    And I send a POST request to "/api/icd-cie" with body:
+      """
+      {
+        "cieVersion": "CIE-10",
+        "code": "${partialUpdateCieCode}",
+        "description": "Original description for partial update test",
+        "chapterNo": "VI",
+        "chapterTitle": "Diseases of the nervous system"
+      }
+      """
+    And I save the JSON response key "id" as "partialUpdateIcdCieID"
+    When I send a PUT request to "/api/icd-cie/${partialUpdateIcdCieID}" with body:
+      """
+      {
+        "description": "Updated description only"
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain "description": "Updated description only"
+    And the JSON response should contain "cieVersion": "CIE-10"
+    And the JSON response should contain "code": "${partialUpdateCieCode}"
+    And the JSON response should contain "chapterNo": "VI"
+    And the JSON response should contain "chapterTitle": "Diseases of the nervous system"
+
+  Scenario: TC04.2 - Update ICD-CIE record with multiple partial fields
+    Given I generate a unique alias as "multiPartialUpdateCieCode"
+    And I send a POST request to "/api/icd-cie" with body:
+      """
+      {
+        "cieVersion": "CIE-10",
+        "code": "${multiPartialUpdateCieCode}",
+        "description": "Original description for multi partial update",
+        "chapterNo": "VI",
+        "chapterTitle": "Original chapter title"
+      }
+      """
+    And I save the JSON response key "id" as "multiPartialUpdateIcdCieID"
+    When I send a PUT request to "/api/icd-cie/${multiPartialUpdateIcdCieID}" with body:
+      """
+      {
+        "cieVersion": "CIE-11",
+        "description": "Updated description",
+        "chapterNo": "VII"
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain "cieVersion": "CIE-11"
+    And the JSON response should contain "description": "Updated description"
+    And the JSON response should contain "chapterNo": "VII"
+    And the JSON response should contain "code": "${multiPartialUpdateCieCode}"
+    And the JSON response should contain "chapterTitle": "Original chapter title"
+
+  Scenario: TC04.3 - Update ICD-CIE record with empty request
+    Given I generate a unique alias as "emptyUpdateCieCode"
+    And I send a POST request to "/api/icd-cie" with body:
+      """
+      {
+        "cieVersion": "CIE-10",
+        "code": "${emptyUpdateCieCode}",
+        "description": "ICD-CIE record for empty update test",
+        "chapterNo": "VI",
+        "chapterTitle": "Diseases of the nervous system"
+      }
+      """
+    And I save the JSON response key "id" as "emptyUpdateIcdCieID"
+    When I send a PUT request to "/api/icd-cie/${emptyUpdateIcdCieID}" with body:
+      """
+      {
+      }
+      """
+    Then the response code should be 400
+    And the JSON response should contain error "error": "No fields to update"
+
+  Scenario: TC04.4 - Attempt to update a non-existent ICD-CIE record
     When I send a PUT request to "/api/icd-cie/999999" with body:
       """
       {
@@ -241,7 +316,7 @@ Feature: ICD-CIE Management
     When I send a POST request to "/api/icd-cie" with body:
       """
       {
-        "cieVersion": "CIE-10-MULTI",
+        "cieVersion": "CIE-10",
         "code": "${multiCieCode1}",
         "description": "First multi-test ICD-CIE record",
         "chapterNo": "XI",
@@ -253,7 +328,7 @@ Feature: ICD-CIE Management
     When I send a POST request to "/api/icd-cie" with body:
       """
       {
-        "cieVersion": "CIE-10-MULTI",
+        "cieVersion": "CIE-10",
         "code": "${multiCieCode2}",
         "description": "Second multi-test ICD-CIE record",
         "chapterNo": "XII",
@@ -265,7 +340,7 @@ Feature: ICD-CIE Management
     When I send a POST request to "/api/icd-cie" with body:
       """
       {
-        "cieVersion": "CIE-10-MULTI",
+        "cieVersion": "CIE-10",
         "code": "${multiCieCode3}",
         "description": "Third multi-test ICD-CIE record",
         "chapterNo": "XIII",

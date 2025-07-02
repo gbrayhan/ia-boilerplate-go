@@ -2,12 +2,13 @@ package handlers
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func (h *Handler) GetICDCies(c *gin.Context) {
@@ -76,11 +77,11 @@ func (h *Handler) CreateICDCie(c *gin.Context) {
 }
 
 type UpdateICDCieRequest struct {
-	CieVersion   string `json:"cieVersion" binding:"required"`
-	Code         string `json:"code" binding:"required"`
-	Description  string `json:"description"`
-	ChapterNo    string `json:"chapterNo"`
-	ChapterTitle string `json:"chapterTitle"`
+	CieVersion   *string `json:"cieVersion"`
+	Code         *string `json:"code"`
+	Description  *string `json:"description"`
+	ChapterNo    *string `json:"chapterNo"`
+	ChapterTitle *string `json:"chapterTitle"`
 }
 
 func (h *Handler) UpdateICDCie(c *gin.Context) {
@@ -95,37 +96,75 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 		return
 	}
 
-	cieVersion := repository.CieVersionType(req.CieVersion)
-	if !cieVersion.IsValid() {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CieVersion, must be one of:" + strings.Join(repository.ValidCieVersions, ", ")})
-		return
-	}
-
-	var record repository.ICDCie
-	if res := h.Repository.DB.First(&record, id); res.Error != nil {
+	// Verificar que el registro existe
+	var existingRecord repository.ICDCie
+	if err := h.Repository.DB.First(&existingRecord, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ICDCie record not found"})
 		return
 	}
-	if req.Code != record.Code {
-		var existing repository.ICDCie
-		if err := h.Repository.DB.Where("code = ?", req.Code).First(&existing).Error; err == nil {
-			c.JSON(http.StatusConflict, gin.H{"error": "Could not update ICDCie record: duplicate code"})
-			return
-		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update ICDCie record"})
+
+	// Preparar los campos a actualizar
+	updates := make(map[string]interface{})
+
+	// Validar y agregar cada campo si está presente en el request
+	if req.CieVersion != nil {
+		cieVersion := repository.CieVersionType(*req.CieVersion)
+		if !cieVersion.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CieVersion, must be one of:" + strings.Join(repository.ValidCieVersions, ", ")})
 			return
 		}
+		updates["cie_version"] = cieVersion
 	}
-	record.CieVersion = cieVersion
-	record.Code = req.Code
-	record.Description = req.Description
-	record.ChapterNo = req.ChapterNo
-	record.ChapterTitle = req.ChapterTitle
-	if save := h.Repository.DB.Save(&record); save.Error != nil {
+
+	if req.Code != nil {
+		// Verificar que el código no esté duplicado (excluyendo el registro actual)
+		if *req.Code != existingRecord.Code {
+			var duplicateCheck repository.ICDCie
+			if err := h.Repository.DB.Where("code = ?", *req.Code).First(&duplicateCheck).Error; err == nil {
+				c.JSON(http.StatusConflict, gin.H{"error": "Could not update ICDCie record: duplicate code"})
+				return
+			} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update ICDCie record"})
+				return
+			}
+		}
+		updates["code"] = *req.Code
+	}
+
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+
+	if req.ChapterNo != nil {
+		updates["chapter_no"] = *req.ChapterNo
+	}
+
+	if req.ChapterTitle != nil {
+		updates["chapter_title"] = *req.ChapterTitle
+	}
+
+	// Si no hay campos para actualizar, retornar error
+	if len(updates) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	// Realizar la actualización
+	if err := h.Repository.DB.Model(&repository.ICDCie{}).
+		Where("id = ?", id).
+		Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update ICDCie record"})
 		return
 	}
-	c.JSON(http.StatusOK, record)
+
+	// Obtener el registro actualizado
+	var updatedRecord repository.ICDCie
+	if err := h.Repository.DB.First(&updatedRecord, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated ICDCie record"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedRecord)
 }
 
 func (h *Handler) DeleteICDCie(c *gin.Context) {

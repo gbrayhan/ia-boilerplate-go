@@ -1,11 +1,12 @@
 package handlers
 
 import (
-	"github.com/gin-gonic/gin"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 func (h *Handler) GetRoles(c *gin.Context) {
@@ -62,9 +63,9 @@ func (h *Handler) CreateRole(c *gin.Context) {
 }
 
 type UpdateRoleRequest struct {
-	Name        string `json:"name" binding:"required"`
-	Description string `json:"description"`
-	Enabled     bool   `json:"enabled"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	Enabled     *bool   `json:"enabled"`
 }
 
 func (h *Handler) UpdateRole(c *gin.Context) {
@@ -74,16 +75,11 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID, must be an integer"})
 		return
 	}
+
 	var req UpdateRoleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
-	}
-	updatedData := repository.RoleUser{
-		Name:        req.Name,
-		Description: req.Description,
-		Enabled:     req.Enabled,
-		UpdatedAt:   time.Now(),
 	}
 
 	var role repository.RoleUser
@@ -92,17 +88,44 @@ func (h *Handler) UpdateRole(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Role not found"})
 		return
 	}
-	role.Name = updatedData.Name
-	role.Description = updatedData.Description
-	role.Enabled = updatedData.Enabled
-	role.UpdatedAt = time.Now()
-	saveResult := h.Repository.DB.Save(&role)
 
-	if saveResult.Error != nil {
+	// Preparar los campos a actualizar
+	updates := make(map[string]interface{})
+	updates["updated_at"] = time.Now()
+
+	// Actualizar solo los campos que están presentes en el request
+	if req.Name != nil {
+		updates["name"] = *req.Name
+	}
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+	if req.Enabled != nil {
+		updates["enabled"] = *req.Enabled
+	}
+
+	// Si no hay campos para actualizar, retornar error
+	if len(updates) <= 1 { // Solo updated_at
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	// Realizar la actualización
+	if err := h.Repository.DB.Model(&repository.RoleUser{}).
+		Where("id = ?", id).
+		Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update role"})
 		return
 	}
-	c.JSON(http.StatusOK, role)
+
+	// Obtener el rol actualizado
+	var updatedRole repository.RoleUser
+	if err := h.Repository.DB.First(&updatedRole, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated role"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedRole)
 }
 
 func (h *Handler) DeleteRole(c *gin.Context) {
@@ -132,14 +155,14 @@ type CreateUserRequest struct {
 }
 
 type UpdateUserRequest struct {
-	Username    string `json:"username" binding:"required"`
-	FirstName   string `json:"firstName"`
-	LastName    string `json:"lastName"`
-	Email       string `json:"email" binding:"required"`
-	Password    string `json:"password"`
-	JobPosition string `json:"jobPosition"`
-	RoleID      int    `json:"roleId" binding:"required"`
-	Enabled     bool   `json:"enabled"`
+	Username    *string `json:"username"`
+	FirstName   *string `json:"firstName"`
+	LastName    *string `json:"lastName"`
+	Email       *string `json:"email"`
+	Password    *string `json:"password"`
+	JobPosition *string `json:"jobPosition"`
+	RoleID      *int    `json:"roleId"`
+	Enabled     *bool   `json:"enabled"`
 }
 
 func (h *Handler) GetUsers(c *gin.Context) {
@@ -211,35 +234,78 @@ func (h *Handler) UpdateUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var user repository.User
-	result := h.Repository.DB.Preload("Role").Preload("Devices").First(&user, id)
 
-	if result.Error != nil {
+	// Verificar que el usuario existe
+	var existingUser repository.User
+	if err := h.Repository.DB.Preload("Role").Preload("Devices").First(&existingUser, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
-	user.Username = req.Username
-	user.FirstName = req.FirstName
-	user.LastName = req.LastName
-	user.Email = req.Email
-	if req.Password != "" {
-		hashedPassword, err := h.Auth.HashPassword(req.Password)
+
+	// Preparar los campos a actualizar
+	updates := make(map[string]interface{})
+	updates["updated_at"] = time.Now()
+
+	// Validar y agregar cada campo si está presente en el request
+	if req.Username != nil {
+		updates["username"] = *req.Username
+	}
+
+	if req.FirstName != nil {
+		updates["first_name"] = *req.FirstName
+	}
+
+	if req.LastName != nil {
+		updates["last_name"] = *req.LastName
+	}
+
+	if req.Email != nil {
+		updates["email"] = *req.Email
+	}
+
+	if req.Password != nil {
+		hashedPassword, err := h.Auth.HashPassword(*req.Password)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error encrypting password"})
 			return
 		}
-		user.HashPassword = hashedPassword
+		updates["hash_password"] = hashedPassword
 	}
-	user.JobPosition = req.JobPosition
-	user.RoleID = req.RoleID
-	user.Enabled = req.Enabled
-	user.UpdatedAt = time.Now()
-	saveResult := h.Repository.DB.Save(&user)
-	if saveResult.Error != nil {
+
+	if req.JobPosition != nil {
+		updates["job_position"] = *req.JobPosition
+	}
+
+	if req.RoleID != nil {
+		updates["role_id"] = *req.RoleID
+	}
+
+	if req.Enabled != nil {
+		updates["enabled"] = *req.Enabled
+	}
+
+	// Si no hay campos para actualizar, retornar error
+	if len(updates) <= 1 { // Solo updated_at
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	// Realizar la actualización
+	if err := h.Repository.DB.Model(&repository.User{}).
+		Where("id = ?", id).
+		Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update user"})
 		return
 	}
-	c.JSON(http.StatusOK, user)
+
+	// Obtener el usuario actualizado
+	var updatedUser repository.User
+	if err := h.Repository.DB.Preload("Role").Preload("Devices").First(&updatedUser, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated user"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedUser)
 }
 
 func (h *Handler) DeleteUser(c *gin.Context) {
@@ -362,13 +428,13 @@ type CreateDeviceRequest struct {
 }
 
 type UpdateDeviceRequest struct {
-	IPAddress      string `json:"ip_address"`
-	UserAgent      string `json:"user_agent"`
-	DeviceType     string `json:"device_type"`
-	Browser        string `json:"browser"`
-	BrowserVersion string `json:"browser_version"`
-	OS             string `json:"os"`
-	Language       string `json:"language"`
+	IPAddress      *string `json:"ip_address"`
+	UserAgent      *string `json:"user_agent"`
+	DeviceType     *string `json:"device_type"`
+	Browser        *string `json:"browser"`
+	BrowserVersion *string `json:"browser_version"`
+	OS             *string `json:"os"`
+	Language       *string `json:"language"`
 }
 
 func (h *Handler) GetDevicesByUser(c *gin.Context) {
@@ -441,26 +507,69 @@ func (h *Handler) UpdateDevice(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	var device repository.DeviceDetails
-	result := h.Repository.DB.First(&device, id)
-	if result.Error != nil {
+
+	// Verificar que el dispositivo existe
+	var existingDevice repository.DeviceDetails
+	if err := h.Repository.DB.First(&existingDevice, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Device not found"})
 		return
 	}
-	device.IPAddress = req.IPAddress
-	device.UserAgent = req.UserAgent
-	device.DeviceType = req.DeviceType
-	device.Browser = req.Browser
-	device.BrowserVersion = req.BrowserVersion
-	device.OS = req.OS
-	device.Language = req.Language
-	device.UpdatedAt = time.Now()
-	saveResult := h.Repository.DB.Save(&device)
-	if saveResult.Error != nil {
+
+	// Preparar los campos a actualizar
+	updates := make(map[string]interface{})
+	updates["updated_at"] = time.Now()
+
+	// Validar y agregar cada campo si está presente en el request
+	if req.IPAddress != nil {
+		updates["ip_address"] = *req.IPAddress
+	}
+
+	if req.UserAgent != nil {
+		updates["user_agent"] = *req.UserAgent
+	}
+
+	if req.DeviceType != nil {
+		updates["device_type"] = *req.DeviceType
+	}
+
+	if req.Browser != nil {
+		updates["browser"] = *req.Browser
+	}
+
+	if req.BrowserVersion != nil {
+		updates["browser_version"] = *req.BrowserVersion
+	}
+
+	if req.OS != nil {
+		updates["os"] = *req.OS
+	}
+
+	if req.Language != nil {
+		updates["language"] = *req.Language
+	}
+
+	// Si no hay campos para actualizar, retornar error
+	if len(updates) <= 1 { // Solo updated_at
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	// Realizar la actualización
+	if err := h.Repository.DB.Model(&repository.DeviceDetails{}).
+		Where("id = ?", id).
+		Updates(updates).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update device"})
 		return
 	}
-	c.JSON(http.StatusOK, device)
+
+	// Obtener el dispositivo actualizado
+	var updatedDevice repository.DeviceDetails
+	if err := h.Repository.DB.First(&updatedDevice, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated device"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedDevice)
 }
 
 func (h *Handler) DeleteDevice(c *gin.Context) {

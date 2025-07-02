@@ -17,14 +17,14 @@ Feature: Medicine Management
         "eanCode": "${newMedicineEan}",
         "description": "Ibuprofen 600mg Test Tablets",
         "laboratory": "PharmaTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Ibuprofen",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 30.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP001"
       }
       """
@@ -42,14 +42,14 @@ Feature: Medicine Management
         "eanCode": "${duplicateTestEan}",
         "description": "First Ibuprofen for duplicate test",
         "laboratory": "DuplicateTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Ibuprofen",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 10.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP001D-First"
       }
       """
@@ -61,14 +61,14 @@ Feature: Medicine Management
         "eanCode": "${duplicateTestEan}",
         "description": "Another Ibuprofen with same EAN",
         "laboratory": "DuplicateTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Ibuprofen",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 10.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP001D-Second"
       }
       """
@@ -95,14 +95,14 @@ Feature: Medicine Management
         "eanCode": "${retrieveMedicineEan}",
         "description": "Medicine for retrieval test",
         "laboratory": "RetrieveTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Acetaminophen",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 20.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP002"
       }
       """
@@ -130,14 +130,14 @@ Feature: Medicine Management
         "eanCode": "${updateMedicineEan}",
         "description": "Medicine for update test",
         "laboratory": "UpdateTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Aspirin",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 25.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP003"
       }
       """
@@ -149,14 +149,14 @@ Feature: Medicine Management
         "eanCode": "${updatedMedicineEan}",
         "description": "Ibuprofen 600mg Tablets - Updated",
         "laboratory": "PharmaTest Labs Inc.",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16UPD",
         "satKey": "51182201_UPD",
         "activeIngredient": "Ibuprofen Forte",
-        "temperatureControl": "temperatura_controlada",
+        "temperatureControl": "refrigerated",
         "isControlled": true,
         "unitQuantity": 32.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP002_UPD"
       }
       """
@@ -172,9 +172,9 @@ Feature: Medicine Management
         "eanCode": "MEDNONEXIST001",
         "description": "Non Existent Update",
         "laboratory": "NoLab",
-        "type": "capsula",
+        "type": "capsule",
         "unitQuantity": 10.0,
-        "unitType": "capsulas"
+        "unitType": "capsule"
       }
       """
     Then the response code should be 404
@@ -188,14 +188,14 @@ Feature: Medicine Management
         "eanCode": "${partialUpdateEan}",
         "description": "Original description for partial update test",
         "laboratory": "PartialUpdateTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Acetaminophen",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 20.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP008"
       }
       """
@@ -220,14 +220,14 @@ Feature: Medicine Management
         "eanCode": "${multiPartialUpdateEan}",
         "description": "Original description for multi partial update",
         "laboratory": "OriginalLab",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Original Ingredient",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 15.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP009"
       }
       """
@@ -247,7 +247,7 @@ Feature: Medicine Management
     And the JSON response should contain "isControlled": true
     And the JSON response should contain "unitQuantity": 25.0
     And the JSON response should contain "eanCode": "${multiPartialUpdateEan}"
-    And the JSON response should contain "type": "tableta"
+    And the JSON response should contain "type": "tablet"
     And the JSON response should contain "activeIngredient": "Original Ingredient"
 
   Scenario: TC03.4 - Attempt to update medicine with empty body
@@ -258,14 +258,14 @@ Feature: Medicine Management
         "eanCode": "${emptyUpdateEan}",
         "description": "Medicine for empty update test",
         "laboratory": "EmptyUpdateTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Test Ingredient",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 10.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP010"
       }
       """
@@ -276,7 +276,7 @@ Feature: Medicine Management
       }
       """
     Then the response code should be 400
-    And the JSON response should contain error "error": "At least one field must be provided for update"
+    And the JSON response should contain error "error": "No fields to update"
 
   Scenario: TC03.5 - Update medicine with invalid type in partial update
     Given I generate a unique EAN code as "invalidTypeUpdateEan"
@@ -286,14 +286,14 @@ Feature: Medicine Management
         "eanCode": "${invalidTypeUpdateEan}",
         "description": "Medicine for invalid type update test",
         "laboratory": "InvalidTypeTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Test Ingredient",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 10.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP011"
       }
       """
@@ -305,7 +305,7 @@ Feature: Medicine Management
       }
       """
     Then the response code should be 400
-    And the JSON response should contain error "error": "Invalid medicine type"
+    And the JSON response should contain error "error": "Invalid medicine type, must be one of: injection, tablet, capsule"
 
   Scenario: TC03.6 - Update medicine with invalid temperature control in partial update
     Given I generate a unique EAN code as "invalidTempUpdateEan"
@@ -315,14 +315,14 @@ Feature: Medicine Management
         "eanCode": "${invalidTempUpdateEan}",
         "description": "Medicine for invalid temp update test",
         "laboratory": "InvalidTempTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Test Ingredient",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 10.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP012"
       }
       """
@@ -334,7 +334,7 @@ Feature: Medicine Management
       }
       """
     Then the response code should be 400
-    And the JSON response should contain error "error": "Invalid temperature control"
+    And the JSON response should contain error "error": "Invalid temperature control, must be one of: room, refrigerated, frozen"
 
   Scenario: TC03.7 - Update medicine with invalid unit type in partial update
     Given I generate a unique EAN code as "invalidUnitUpdateEan"
@@ -344,14 +344,14 @@ Feature: Medicine Management
         "eanCode": "${invalidUnitUpdateEan}",
         "description": "Medicine for invalid unit update test",
         "laboratory": "InvalidUnitTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Test Ingredient",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 10.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP013"
       }
       """
@@ -363,7 +363,7 @@ Feature: Medicine Management
       }
       """
     Then the response code should be 400
-    And the JSON response should contain error "error": "Invalid unit type"
+    And the JSON response should contain error "error": "Invalid unit type, must be one of: ml, g, piece, tablet, capsule"
 
   Scenario: TC04 - Search for medicines by description (paginated)
     Given I generate a unique EAN code as "searchMedicineEan"
@@ -373,14 +373,14 @@ Feature: Medicine Management
         "eanCode": "${searchMedicineEan}",
         "description": "Search Test Ibuprofen",
         "laboratory": "SearchTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Ibuprofen",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 15.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP004"
       }
       """
@@ -397,14 +397,14 @@ Feature: Medicine Management
         "eanCode": "${searchEanCode}",
         "description": "EAN Search Test Medicine",
         "laboratory": "EANSearchTest Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Paracetamol",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 18.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP005"
       }
       """
@@ -420,14 +420,14 @@ Feature: Medicine Management
         "eanCode": "${propertySearchEan}",
         "description": "Property Search Test Medicine",
         "laboratory": "PharmaTest Property Labs",
-        "type": "tableta",
+        "type": "tablet",
         "iva": "16",
         "satKey": "51182200",
         "activeIngredient": "Omeprazole",
-        "temperatureControl": "seco",
+        "temperatureControl": "room",
         "isControlled": false,
         "unitQuantity": 12.0,
-        "unitType": "tabletas",
+        "unitType": "tablet",
         "rxCode": "RXP006"
       }
       """

@@ -2,14 +2,15 @@ package handlers
 
 import (
 	"errors"
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func snakeCase(s string) string {
@@ -232,4 +233,139 @@ func (h *Handler) SearchMedicineCoincidencesByProperty(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, results)
+}
+
+type updateMedicineRequest struct {
+	EANCode            *string  `json:"eanCode"`
+	Description        *string  `json:"description"`
+	Type               *string  `json:"type"`
+	Laboratory         *string  `json:"laboratory"`
+	IVA                *string  `json:"iva"`
+	SatKey             *string  `json:"satKey"`
+	ActiveIngredient   *string  `json:"activeIngredient"`
+	TemperatureControl *string  `json:"temperatureControl"`
+	IsControlled       *bool    `json:"isControlled"`
+	UnitQuantity       *float64 `json:"unitQuantity"`
+	UnitType           *string  `json:"unitType"`
+}
+
+func (h *Handler) UpdateMedicine(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
+		return
+	}
+
+	// Verificar que el medicamento existe
+	var existingMedicine repository.Medicine
+	if err := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&existingMedicine).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Medicine not found"})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		}
+		return
+	}
+
+	var req updateMedicineRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Preparar los campos a actualizar
+	updates := make(map[string]interface{})
+	updates["updated_at"] = time.Now()
+
+	// Validar y agregar cada campo si está presente en el request
+	if req.EANCode != nil {
+		// Verificar que el EAN code no esté duplicado (excluyendo el registro actual)
+		var duplicateCheck repository.Medicine
+		if err := h.Repository.DB.Where("ean_code = ? AND id != ? AND is_deleted = ?", *req.EANCode, id, false).First(&duplicateCheck).Error; err == nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "EAN code already exists"})
+			return
+		} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error checking EAN code"})
+			return
+		}
+		updates["ean_code"] = *req.EANCode
+	}
+
+	if req.Description != nil {
+		updates["description"] = *req.Description
+	}
+
+	if req.Type != nil {
+		medicineType := repository.MedicineType(*req.Type)
+		if !medicineType.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid medicine type, must be one of: " + strings.Join(repository.ValidMedicineTypes, ", ")})
+			return
+		}
+		updates["type"] = medicineType
+	}
+
+	if req.Laboratory != nil {
+		updates["laboratory"] = *req.Laboratory
+	}
+
+	if req.IVA != nil {
+		updates["iva"] = *req.IVA
+	}
+
+	if req.SatKey != nil {
+		updates["sat_key"] = *req.SatKey
+	}
+
+	if req.ActiveIngredient != nil {
+		updates["active_ingredient"] = *req.ActiveIngredient
+	}
+
+	if req.TemperatureControl != nil {
+		temperatureControl := repository.TemperatureControlType(*req.TemperatureControl)
+		if !temperatureControl.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid temperature control, must be one of: " + strings.Join(repository.ValidTemperatureCtrls, ", ")})
+			return
+		}
+		updates["temperature_control"] = temperatureControl
+	}
+
+	if req.IsControlled != nil {
+		updates["is_controlled"] = *req.IsControlled
+	}
+
+	if req.UnitQuantity != nil {
+		updates["unit_quantity"] = *req.UnitQuantity
+	}
+
+	if req.UnitType != nil {
+		unitType := repository.UnitType(*req.UnitType)
+		if !unitType.IsValid() {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid unit type, must be one of: " + strings.Join(repository.ValidUnitTypes, ", ")})
+			return
+		}
+		updates["unit_type"] = unitType
+	}
+
+	// Si no hay campos para actualizar, retornar error
+	if len(updates) <= 1 { // Solo updated_at
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
+		return
+	}
+
+	// Realizar la actualización
+	if err := h.Repository.DB.Model(&repository.Medicine{}).
+		Where("id = ? AND is_deleted = ?", id, false).
+		Updates(updates).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update medicine"})
+		return
+	}
+
+	// Obtener el medicamento actualizado
+	var updatedMedicine repository.Medicine
+	if err := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&updatedMedicine).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated medicine"})
+		return
+	}
+
+	c.JSON(http.StatusOK, updatedMedicine)
 }

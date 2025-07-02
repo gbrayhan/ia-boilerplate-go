@@ -1,15 +1,16 @@
 package main
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/robfig/cron/v3"
-	"go.uber.org/zap"
 	"ia-boilerplate/src/handlers"
 	"ia-boilerplate/src/infrastructure"
 	"ia-boilerplate/src/middlewares"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/robfig/cron/v3"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -125,6 +126,7 @@ func SetupRoutes(router *gin.Engine, handler *handlers.Handler) {
 	{
 		medicineRoutes.GET("/:id", handler.GetMedicine)
 		medicineRoutes.POST("", handler.CreateMedicine)
+		medicineRoutes.PUT("/:id", handler.UpdateMedicine)
 		medicineRoutes.DELETE("/:id", handler.DeleteMedicine)
 		medicineRoutes.GET("/search-paginated", handler.SearchMedicinesPaginated)
 		medicineRoutes.GET("/search-by-property", handler.SearchMedicineCoincidencesByProperty)

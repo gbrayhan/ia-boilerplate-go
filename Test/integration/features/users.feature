@@ -261,6 +261,123 @@ Feature: User Management
     And the JSON response should contain "jobPosition": "Senior Analyst"
     And the JSON response should contain "enabled": false
 
+  Scenario: TC09.1 - Update user with partial fields (only firstName)
+    Given I generate a unique alias as "partialUpdateUserUsername"
+    And I generate a unique alias as "partialUpdateUserEmail"
+    And I generate a unique alias as "partialUpdateUserRoleName"
+    And I send a POST request to "/api/users/roles" with body:
+      """
+      {
+        "name": "${partialUpdateUserRoleName}",
+        "description": "Role for partial user update test",
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "partialUpdateUserRoleID"
+    And I send a POST request to "/api/users" with body:
+      """
+      {
+        "username": "${partialUpdateUserUsername}",
+        "firstName": "Original",
+        "lastName": "User",
+        "email": "${partialUpdateUserEmail}@test.com",
+        "password": "securePassword123",
+        "jobPosition": "Original Position",
+        "roleId": ${partialUpdateUserRoleID},
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "partialUpdateUserID"
+    When I send a PUT request to "/api/users/${partialUpdateUserID}" with body:
+      """
+      {
+        "firstName": "Updated"
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain "firstName": "Updated"
+    And the JSON response should contain "lastName": "User"
+    And the JSON response should contain "jobPosition": "Original Position"
+    And the JSON response should contain "enabled": true
+
+  Scenario: TC09.2 - Update user with multiple partial fields
+    Given I generate a unique alias as "multiPartialUpdateUserUsername"
+    And I generate a unique alias as "multiPartialUpdateUserEmail"
+    And I generate a unique alias as "multiPartialUpdateUserRoleName"
+    And I send a POST request to "/api/users/roles" with body:
+      """
+      {
+        "name": "${multiPartialUpdateUserRoleName}",
+        "description": "Role for multi partial user update test",
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "multiPartialUpdateUserRoleID"
+    And I send a POST request to "/api/users" with body:
+      """
+      {
+        "username": "${multiPartialUpdateUserUsername}",
+        "firstName": "Original",
+        "lastName": "User",
+        "email": "${multiPartialUpdateUserEmail}@test.com",
+        "password": "securePassword123",
+        "jobPosition": "Original Position",
+        "roleId": ${multiPartialUpdateUserRoleID},
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "multiPartialUpdateUserID"
+    When I send a PUT request to "/api/users/${multiPartialUpdateUserID}" with body:
+      """
+      {
+        "firstName": "Updated",
+        "lastName": "UpdatedUser",
+        "jobPosition": "Updated Position",
+        "enabled": false
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain "firstName": "Updated"
+    And the JSON response should contain "lastName": "UpdatedUser"
+    And the JSON response should contain "jobPosition": "Updated Position"
+    And the JSON response should contain "enabled": false
+    And the JSON response should contain "email": "${multiPartialUpdateUserEmail}@test.com"
+
+  Scenario: TC09.3 - Update user with empty request
+    Given I generate a unique alias as "emptyUpdateUserUsername"
+    And I generate a unique alias as "emptyUpdateUserEmail"
+    And I generate a unique alias as "emptyUpdateUserRoleName"
+    And I send a POST request to "/api/users/roles" with body:
+      """
+      {
+        "name": "${emptyUpdateUserRoleName}",
+        "description": "Role for empty user update test",
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "emptyUpdateUserRoleID"
+    And I send a POST request to "/api/users" with body:
+      """
+      {
+        "username": "${emptyUpdateUserUsername}",
+        "firstName": "Empty",
+        "lastName": "User",
+        "email": "${emptyUpdateUserEmail}@test.com",
+        "password": "securePassword123",
+        "jobPosition": "Empty Position",
+        "roleId": ${emptyUpdateUserRoleID},
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "emptyUpdateUserID"
+    When I send a PUT request to "/api/users/${emptyUpdateUserID}" with body:
+      """
+      {
+      }
+      """
+    Then the response code should be 400
+    And the JSON response should contain error "error": "No fields to update"
+
   Scenario: TC10 - Delete a user
     Given I generate a unique alias as "deleteUserUsername"
     And I generate a unique alias as "deleteUserEmail"
@@ -502,6 +619,166 @@ Feature: User Management
     And the JSON response should contain "browser": "Chrome Mobile"
     And the JSON response should contain "os": "Android"
     And the JSON response should contain "language": "es-ES"
+
+  Scenario: TC14.1 - Update device with partial fields (only ip_address)
+    Given I generate a unique alias as "partialUpdateDeviceUserUsername"
+    And I generate a unique alias as "partialUpdateDeviceUserEmail"
+    And I generate a unique alias as "partialUpdateDeviceUserRoleName"
+    And I send a POST request to "/api/users/roles" with body:
+      """
+      {
+        "name": "${partialUpdateDeviceUserRoleName}",
+        "description": "Role for partial device update test",
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "partialUpdateDeviceUserRoleID"
+    And I send a POST request to "/api/users" with body:
+      """
+      {
+        "username": "${partialUpdateDeviceUserUsername}",
+        "firstName": "Partial",
+        "lastName": "DeviceUser",
+        "email": "${partialUpdateDeviceUserEmail}@test.com",
+        "password": "securePassword123",
+        "jobPosition": "Partial Device Tester",
+        "roleId": ${partialUpdateDeviceUserRoleID},
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "partialUpdateDeviceUserID"
+    And I send a POST request to "/api/users/devices" with body:
+      """
+      {
+        "userId": ${partialUpdateDeviceUserID},
+        "ip_address": "192.168.1.105",
+        "user_agent": "Original User Agent",
+        "device_type": "desktop",
+        "browser": "Original Browser",
+        "browser_version": "1.0.0",
+        "os": "Original OS",
+        "language": "en-US"
+      }
+      """
+    And I save the JSON response key "id" as "partialUpdateDeviceID"
+    When I send a PUT request to "/api/users/devices/${partialUpdateDeviceID}" with body:
+      """
+      {
+        "ip_address": "192.168.1.106"
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain "ip_address": "192.168.1.106"
+    And the JSON response should contain "user_agent": "Original User Agent"
+    And the JSON response should contain "device_type": "desktop"
+    And the JSON response should contain "browser": "Original Browser"
+
+  Scenario: TC14.2 - Update device with multiple partial fields
+    Given I generate a unique alias as "multiPartialUpdateDeviceUserUsername"
+    And I generate a unique alias as "multiPartialUpdateDeviceUserEmail"
+    And I generate a unique alias as "multiPartialUpdateDeviceUserRoleName"
+    And I send a POST request to "/api/users/roles" with body:
+      """
+      {
+        "name": "${multiPartialUpdateDeviceUserRoleName}",
+        "description": "Role for multi partial device update test",
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "multiPartialUpdateDeviceUserRoleID"
+    And I send a POST request to "/api/users" with body:
+      """
+      {
+        "username": "${multiPartialUpdateDeviceUserUsername}",
+        "firstName": "Multi",
+        "lastName": "DeviceUser",
+        "email": "${multiPartialUpdateDeviceUserEmail}@test.com",
+        "password": "securePassword123",
+        "jobPosition": "Multi Device Tester",
+        "roleId": ${multiPartialUpdateDeviceUserRoleID},
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "multiPartialUpdateDeviceUserID"
+    And I send a POST request to "/api/users/devices" with body:
+      """
+      {
+        "userId": ${multiPartialUpdateDeviceUserID},
+        "ip_address": "192.168.1.107",
+        "user_agent": "Original User Agent",
+        "device_type": "desktop",
+        "browser": "Original Browser",
+        "browser_version": "1.0.0",
+        "os": "Original OS",
+        "language": "en-US"
+      }
+      """
+    And I save the JSON response key "id" as "multiPartialUpdateDeviceID"
+    When I send a PUT request to "/api/users/devices/${multiPartialUpdateDeviceID}" with body:
+      """
+      {
+        "ip_address": "192.168.1.108",
+        "device_type": "mobile",
+        "browser": "Updated Browser",
+        "language": "es-ES"
+      }
+      """
+    Then the response code should be 200
+    And the JSON response should contain "ip_address": "192.168.1.108"
+    And the JSON response should contain "device_type": "mobile"
+    And the JSON response should contain "browser": "Updated Browser"
+    And the JSON response should contain "language": "es-ES"
+    And the JSON response should contain "user_agent": "Original User Agent"
+    And the JSON response should contain "os": "Original OS"
+
+  Scenario: TC14.3 - Update device with empty request
+    Given I generate a unique alias as "emptyUpdateDeviceUserUsername"
+    And I generate a unique alias as "emptyUpdateDeviceUserEmail"
+    And I generate a unique alias as "emptyUpdateDeviceUserRoleName"
+    And I send a POST request to "/api/users/roles" with body:
+      """
+      {
+        "name": "${emptyUpdateDeviceUserRoleName}",
+        "description": "Role for empty device update test",
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "emptyUpdateDeviceUserRoleID"
+    And I send a POST request to "/api/users" with body:
+      """
+      {
+        "username": "${emptyUpdateDeviceUserUsername}",
+        "firstName": "Empty",
+        "lastName": "DeviceUser",
+        "email": "${emptyUpdateDeviceUserEmail}@test.com",
+        "password": "securePassword123",
+        "jobPosition": "Empty Device Tester",
+        "roleId": ${emptyUpdateDeviceUserRoleID},
+        "enabled": true
+      }
+      """
+    And I save the JSON response key "id" as "emptyUpdateDeviceUserID"
+    And I send a POST request to "/api/users/devices" with body:
+      """
+      {
+        "userId": ${emptyUpdateDeviceUserID},
+        "ip_address": "192.168.1.109",
+        "user_agent": "Empty Update Test",
+        "device_type": "desktop",
+        "browser": "Test Browser",
+        "browser_version": "1.0.0",
+        "os": "Test OS",
+        "language": "en-US"
+      }
+      """
+    And I save the JSON response key "id" as "emptyUpdateDeviceID"
+    When I send a PUT request to "/api/users/devices/${emptyUpdateDeviceID}" with body:
+      """
+      {
+      }
+      """
+    Then the response code should be 400
+    And the JSON response should contain error "error": "No fields to update"
 
   Scenario: TC15 - Delete a device
     Given I generate a unique alias as "deleteDeviceUserUsername"
