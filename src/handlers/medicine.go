@@ -12,12 +12,6 @@ import (
 	"unicode"
 )
 
-var (
-	validMedicineTypes    = map[string]bool{"tableta": true, "capsula": true}
-	validTemperatureCtrls = map[string]bool{"seco": true, "temperatura_controlada": true}
-	validUnitTypes        = map[string]bool{"tabletas": true, "capsulas": true}
-)
-
 func snakeCase(s string) string {
 	var out []rune
 	for i, r := range s {
@@ -51,17 +45,17 @@ func (h *Handler) GetMedicine(c *gin.Context) {
 }
 
 type createMedicineRequest struct {
-	EANCode          string  `json:"eanCode" binding:"required"`
-	Description      string  `json:"description" binding:"required"`
-	Type             string  `json:"type" binding:"required"`
-	Laboratory       string  `json:"laboratory"`
-	IVA              string  `json:"iva"`
-	SatKey           string  `json:"satKey"`
-	ActiveIngredient string  `json:"activeIngredient"`
-	TemperatureCtrl  string  `json:"temperatureControl"`
-	IsControlled     bool    `json:"isControlled"`
-	UnitQuantity     float64 `json:"unitQuantity"`
-	UnitType         string  `json:"unitType"`
+	EANCode            string  `json:"eanCode" binding:"required"`
+	Description        string  `json:"description" binding:"required"`
+	Type               string  `json:"type" binding:"required"`
+	Laboratory         string  `json:"laboratory"`
+	IVA                string  `json:"iva"`
+	SatKey             string  `json:"satKey"`
+	ActiveIngredient   string  `json:"activeIngredient"`
+	TemperatureControl string  `json:"temperatureControl"`
+	IsControlled       bool    `json:"isControlled"`
+	UnitQuantity       float64 `json:"unitQuantity"`
+	UnitType           string  `json:"unitType"`
 }
 
 func (h *Handler) CreateMedicine(c *gin.Context) {
@@ -80,34 +74,40 @@ func (h *Handler) CreateMedicine(c *gin.Context) {
 		return
 	}
 
-	if !validMedicineTypes[req.Type] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid medicine type"})
+	medicineType := repository.MedicineType(req.Type)
+	if !medicineType.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid medicine type, must be one of: " + strings.Join(repository.ValidMedicineTypes, ", ")})
 		return
 	}
-	if req.TemperatureCtrl != "" && !validTemperatureCtrls[req.TemperatureCtrl] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid temperature control"})
+
+	temperatureControl := repository.TemperatureControlType(req.TemperatureControl)
+
+	if !temperatureControl.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid temperature control, must be one of: " + strings.Join(repository.ValidTemperatureCtrls, ", ")})
 		return
 	}
-	if req.UnitType != "" && !validUnitTypes[req.UnitType] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid unit type"})
+
+	unitType := repository.UnitType(req.UnitType)
+	if !unitType.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid unit type, must be one of: " + strings.Join(repository.ValidUnitTypes, ", ")})
 		return
 	}
 
 	m := repository.Medicine{
-		EANCode:          req.EANCode,
-		Description:      req.Description,
-		Type:             req.Type,
-		Laboratory:       req.Laboratory,
-		IVA:              req.IVA,
-		SatKey:           req.SatKey,
-		TemperatureCtrl:  req.TemperatureCtrl,
-		ActiveIngredient: req.ActiveIngredient,
-		ColdChain:        false,
-		IsControlled:     req.IsControlled,
-		UnitQuantity:     req.UnitQuantity,
-		UnitType:         req.UnitType,
-		CreatedAt:        time.Now(),
-		UpdatedAt:        time.Now(),
+		EANCode:            req.EANCode,
+		Description:        req.Description,
+		Type:               medicineType,
+		Laboratory:         req.Laboratory,
+		IVA:                req.IVA,
+		SatKey:             req.SatKey,
+		TemperatureControl: temperatureControl,
+		ActiveIngredient:   req.ActiveIngredient,
+		ColdChain:          false,
+		IsControlled:       req.IsControlled,
+		UnitQuantity:       req.UnitQuantity,
+		UnitType:           unitType,
+		CreatedAt:          time.Now(),
+		UpdatedAt:          time.Now(),
 	}
 
 	if res := h.Repository.DB.Create(&m); res.Error != nil {
@@ -120,83 +120,6 @@ func (h *Handler) CreateMedicine(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, m)
-}
-
-func (h *Handler) UpdateMedicine(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ID"})
-		return
-	}
-
-	var payload map[string]interface{}
-	if err := c.ShouldBindJSON(&payload); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if len(payload) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one field must be provided for update"})
-		return
-	}
-
-	var m repository.Medicine
-	if res := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&m); res.Error != nil {
-		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Medicine not found"})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		}
-		return
-	}
-
-	updates := map[string]interface{}{}
-	for k, v := range payload {
-		switch k {
-		case "type":
-			s, ok := v.(string)
-			if !ok || !validMedicineTypes[s] {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid medicine type"})
-				return
-			}
-			updates["type"] = s
-		case "temperatureControl":
-			s, ok := v.(string)
-			if !ok || !validTemperatureCtrls[s] {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid temperature control"})
-				return
-			}
-			updates["temperature_ctrl"] = s
-		case "unitType":
-			s, ok := v.(string)
-			if !ok || !validUnitTypes[s] {
-				c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid unit type"})
-				return
-			}
-			updates["unit_type"] = s
-		case "eanCode", "description", "laboratory", "iva", "satKey", "activeIngredient", "isControlled", "unitQuantity", "coldChain", "isDeleted":
-			updates[snakeCase(k)] = v
-		}
-	}
-
-	if len(updates) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "At least one field must be provided for update"})
-		return
-	}
-
-	updates["updated_at"] = time.Now()
-
-	if err := h.Repository.DB.Model(&m).Updates(updates).Error; err != nil {
-		if strings.Contains(err.Error(), "duplicate key value") {
-			c.JSON(http.StatusConflict, gin.H{"error": "Could not update medicine: " + err.Error()})
-		} else {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not update medicine"})
-		}
-		return
-	}
-
-	h.Repository.DB.First(&m, id)
-	c.JSON(http.StatusOK, m)
 }
 
 func (h *Handler) DeleteMedicine(c *gin.Context) {

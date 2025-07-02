@@ -125,7 +125,6 @@ func SetupRoutes(router *gin.Engine, handler *handlers.Handler) {
 	{
 		medicineRoutes.GET("/:id", handler.GetMedicine)
 		medicineRoutes.POST("", handler.CreateMedicine)
-		medicineRoutes.PUT("/:id", handler.UpdateMedicine)
 		medicineRoutes.DELETE("/:id", handler.DeleteMedicine)
 		medicineRoutes.GET("/search-paginated", handler.SearchMedicinesPaginated)
 		medicineRoutes.GET("/search-by-property", handler.SearchMedicineCoincidencesByProperty)

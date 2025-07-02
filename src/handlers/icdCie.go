@@ -7,6 +7,7 @@ import (
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 func (h *Handler) GetICDCies(c *gin.Context) {
@@ -46,6 +47,12 @@ func (h *Handler) CreateICDCie(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	cieVersion := repository.CieVersionType(req.CieVersion)
+	if !cieVersion.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CieVersion, must be one of:" + strings.Join(repository.ValidCieVersions, ", ")})
+		return
+	}
+
 	var existing repository.ICDCie
 	if err := h.Repository.DB.Where("code = ?", req.Code).First(&existing).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Could not create ICDCie record: duplicate code"})
@@ -55,7 +62,7 @@ func (h *Handler) CreateICDCie(c *gin.Context) {
 		return
 	}
 	record := repository.ICDCie{
-		CieVersion:   req.CieVersion,
+		CieVersion:   cieVersion,
 		Code:         req.Code,
 		Description:  req.Description,
 		ChapterNo:    req.ChapterNo,
@@ -87,6 +94,13 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+
+	cieVersion := repository.CieVersionType(req.CieVersion)
+	if !cieVersion.IsValid() {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid CieVersion, must be one of:" + strings.Join(repository.ValidCieVersions, ", ")})
+		return
+	}
+
 	var record repository.ICDCie
 	if res := h.Repository.DB.First(&record, id); res.Error != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ICDCie record not found"})
@@ -102,7 +116,7 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 			return
 		}
 	}
-	record.CieVersion = req.CieVersion
+	record.CieVersion = cieVersion
 	record.Code = req.Code
 	record.Description = req.Description
 	record.ChapterNo = req.ChapterNo
