@@ -2,27 +2,14 @@ package handlers
 
 import (
 	"errors"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"ia-boilerplate/src/repository"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-	"unicode"
-
-	"github.com/gin-gonic/gin"
-	"gorm.io/gorm"
 )
-
-func snakeCase(s string) string {
-	var out []rune
-	for i, r := range s {
-		if unicode.IsUpper(r) && i > 0 {
-			out = append(out, '_')
-		}
-		out = append(out, unicode.ToLower(r))
-	}
-	return string(out)
-}
 
 func (h *Handler) GetMedicine(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
