@@ -1,145 +1,145 @@
-# Tests de Integración
+# Integration Tests
 
-Este directorio contiene los tests de integración para la API de ia-boilerplate-go, implementados usando Cucumber/Gherkin con el framework Godog.
+This directory contains the integration tests for the ia-boilerplate-go API. The tests are written in Cucumber/Gherkin and executed with the Godog framework.
 
-## Filosofías del Framework de Testing
+## Testing Framework Philosophy
 
-### 1. **Gestión Autónoma de Recursos**
-- Todos los recursos creados durante los tests son automáticamente rastreados
-- Limpieza automática al final de cada escenario
-- Prevención de contaminación entre tests
+### 1. **Automatic Resource Management**
+- Every resource created during the tests is automatically tracked.
+- Automatic cleanup is executed at the end of each scenario.
+- This prevents contamination between tests.
 
-### 2. **Autenticación Automática**
-- Login automático al inicio de cada escenario
-- Tokens de acceso manejados globalmente
-- Headers de autorización agregados automáticamente
+### 2. **Automatic Authentication**
+- Each scenario performs a login at startup.
+- Access tokens are managed globally.
+- Authorization headers are added automatically.
 
-### 3. **Variables Dinámicas**
-- Generación de valores únicos para evitar conflictos
-- Sustitución de variables en URLs y payloads
-- Persistencia de valores entre pasos del escenario
+### 3. **Dynamic Variables**
+- Unique values are generated to avoid conflicts.
+- Variables can be substituted in URLs and payloads.
+- Values persist across steps in a scenario.
 
-### 4. **Validación Robusta**
-- Verificación de códigos de estado HTTP
-- Validación de estructura JSON de respuestas
-- Manejo de errores y casos edge
+### 4. **Robust Validation**
+- HTTP status codes are verified.
+- JSON response structure is validated.
+- Edge cases and error handling are covered.
 
-## Estructura de Archivos
+## File Structure
 
 ```
 Test/integration/
-├── main_test.go              # Configuración principal de tests
-├── steps.go                  # Implementación de pasos Gherkin
-├── README.md                 # Este archivo
-└── features/                 # Archivos de features Gherkin
-    ├── auth.feature          # Tests de autenticación
-    ├── users.feature         # Tests de usuarios, roles y dispositivos
-    ├── medicine.feature      # Tests de medicamentos
-    ├── icd-cie.feature       # Tests de códigos ICD-CIE
-    ├── device-info.feature   # Tests de información de dispositivos
-    └── error-handling.feature # Tests de manejo de errores
+├── main_test.go              # Main test configuration
+├── steps.go                  # Gherkin step implementations
+├── README.md                 # This file
+└── features/                 # Gherkin feature files
+    ├── auth.feature          # Authentication tests
+    ├── users.feature         # Users, roles and devices
+    ├── medicine.feature      # Medicines
+    ├── icd-cie.feature       # ICD-CIE codes
+    ├── device-info.feature   # Device information
+    └── error-handling.feature # Error handling tests
 ```
 
-## Archivos de Features
+## Feature Files
 
 ### 1. **auth.feature**
-Tests de autenticación y autorización:
-- Login con credenciales válidas/inválidas
-- Refresh de tokens
-- Acceso a endpoints protegidos sin autenticación
+Authentication and authorization tests:
+- Login with valid/invalid credentials
+- Token refresh
+- Access to protected endpoints without authentication
 
 ### 2. **users.feature**
-Tests completos de gestión de usuarios:
-- CRUD de roles de usuario
-- CRUD de usuarios
-- CRUD de dispositivos asociados a usuarios
-- Búsquedas paginadas y por propiedades
+Comprehensive user management tests:
+- CRUD for user roles
+- CRUD for users
+- CRUD for devices linked to users
+- Paginated and property based searches
 
 ### 3. **medicine.feature**
-Tests de gestión de medicamentos:
-- CRUD de medicamentos
-- Validación de códigos EAN únicos
-- Búsquedas avanzadas
-- Manejo de campos requeridos
+Medicine management tests:
+- CRUD for medicines
+- Unique EAN code validation
+- Advanced searches
+- Required field handling
 
 ### 4. **icd-cie.feature**
-Tests de códigos ICD-CIE:
-- CRUD de registros ICD-CIE
-- Búsquedas con filtros múltiples
-- Validación de propiedades de búsqueda
-- Paginación y casos edge
+ICD-CIE code tests:
+- CRUD for ICD-CIE records
+- Searches with multiple filters
+- Search property validation
+- Pagination and edge cases
 
 ### 5. **device-info.feature**
-Tests de información de dispositivos:
-- Endpoint de información de dispositivo
-- Health check autenticado
-- Verificación de middleware de dispositivos
+Device information tests:
+- Device information endpoint
+- Authenticated health check
+- Device middleware verification
 
 ### 6. **error-handling.feature**
-Tests de manejo de errores:
-- Casos de autenticación fallida
-- IDs inválidos
-- Campos requeridos faltantes
-- Payloads JSON malformados
-- Casos edge de paginación
+Error handling tests:
+- Failed authentication cases
+- Invalid IDs
+- Missing required fields
+- Malformed JSON payloads
+- Pagination edge cases
 
-## Ejecución de Tests
+## Running the Tests
 
-### Opción 1: Script Automatizado (Recomendado)
+### Option 1: Automated Script (Recommended)
 
 ```bash
-# Ejecutar todos los tests
+# Run all tests
 ./scripts/run-all-integration-tests.bash
 
-# Ejecutar tests específicos
+# Run specific feature files
 ./scripts/run-all-integration-tests.bash -f auth.feature
 ./scripts/run-all-integration-tests.bash -f users.feature
 
-# Ejecutar con Docker
+# Run with Docker
 ./scripts/run-all-integration-tests.bash -d -v
 
-# Ejecutar con tags específicos
+# Run with specific tags
 ./scripts/run-all-integration-tests.bash -t @smoke
 
-# Modo verbose
+# Verbose mode
 ./scripts/run-all-integration-tests.bash -v
 ```
 
-### Opción 2: Comando Directo
+### Option 2: Direct Command
 
 ```bash
-# Ejecutar todos los tests
+# Run all tests
 go test -tags=integration ./Test/integration/...
 
-# Ejecutar con verbose
+# Verbose output
 go test -v -tags=integration ./Test/integration/...
 
-# Ejecutar feature específico
+# Run a specific feature
 INTEGRATION_FEATURE_FILE=auth.feature go test -tags=integration ./Test/integration/...
 
-# Ejecutar con tags específicos
+# Run with scenario tags
 INTEGRATION_SCENARIO_TAGS=@smoke go test -tags=integration ./Test/integration/...
 ```
 
-### Opción 3: Docker Compose
+### Option 3: Docker Compose
 
 ```bash
-# Ejecutar tests con Docker
+# Run tests with Docker
 docker-compose run --rm app go test -tags=integration ./Test/integration/...
 
-# Ejecutar con verbose
+# Verbose output
 docker-compose run --rm app go test -v -tags=integration ./Test/integration/...
 ```
 
-## Variables de Entorno
+## Environment Variables
 
-| Variable | Descripción | Ejemplo |
+| Variable | Description | Example |
 |----------|-------------|---------|
-| `INTEGRATION_FEATURE_FILE` | Ejecutar solo un archivo de feature | `auth.feature` |
-| `INTEGRATION_SCENARIO_TAGS` | Ejecutar solo escenarios con tags específicos | `@smoke` |
-| `INTEGRATION_TEST_MODE` | Modo de testing activado | `true` |
+| `INTEGRATION_FEATURE_FILE` | Run only one feature file | `auth.feature` |
+| `INTEGRATION_SCENARIO_TAGS` | Run scenarios with specific tags | `@smoke` |
+| `INTEGRATION_TEST_MODE` | Enable testing mode | `true` |
 
-## Estructura de un Escenario
+## Example Scenario Structure
 
 ```gherkin
 Scenario: TC01 - Create a new user successfully
@@ -160,89 +160,89 @@ Scenario: TC01 - Create a new user successfully
   And I save the JSON response key "id" as "userID"
 ```
 
-## Pasos Disponibles
+## Available Steps
 
-### Pasos Given (Configuración)
+### Given Steps (Setup)
 - `I generate a unique alias as "varName"`
 - `I generate a unique EAN code as "varName"`
 - `I clear the authentication token`
 - `I am authenticated as a user`
 
-### Pasos When (Acciones)
+### When Steps (Actions)
 - `I send a GET request to "path"`
 - `I send a POST request to "path" with body:`
 - `I send a PUT request to "path" with body:`
 - `I send a DELETE request to "path"`
 
-### Pasos Then (Validaciones)
+### Then Steps (Assertions)
 - `the response code should be 200`
 - `the JSON response should contain key "keyName"`
 - `the JSON response should contain "field": "value"`
 - `the JSON response should contain error "error": "message"`
 - `I save the JSON response key "key" as "varName"`
 
-## Gestión de Recursos
+## Resource Management
 
-### Creación Automática
-Los recursos creados durante los tests son automáticamente rastreados:
+### Automatic Creation
+Resources created during tests are automatically tracked:
 
 ```go
-// En steps.go
+// In steps.go
 func trackResource(path string) {
-    // Rastrea recursos para limpieza posterior
+    // Track resources for later cleanup
 }
 ```
 
-### Limpieza Automática
-Al final de cada escenario, todos los recursos creados son eliminados:
+### Automatic Cleanup
+At the end of each scenario all created resources are removed:
 
 ```go
-// En steps.go
+// In steps.go
 func InitializeScenario(ctx *godog.ScenarioContext) {
-    // Setup y teardown automático
+    // Automatic setup and teardown
 }
 ```
 
 ## Debugging
 
-### Modo Verbose
+### Verbose Mode
 ```bash
 go test -v -tags=integration ./Test/integration/...
 ```
 
-### Logs Detallados
-Los tests incluyen logs detallados que muestran:
-- URLs de requests
-- Headers enviados
-- Códigos de respuesta
-- Cuerpo de respuestas
-- Variables generadas
+### Detailed Logs
+The tests include detailed logs showing:
+- Request URLs
+- Sent headers
+- Response codes
+- Response bodies
+- Generated variables
 
-### Variables de Debug
+### Debug Variables
 ```bash
-# Habilitar logs de debug
+# Enable debug logs
 export DEBUG=true
 go test -tags=integration ./Test/integration/...
 ```
 
-## Mejores Prácticas
+## Best Practices
 
-### 1. **Nombres Únicos**
-Siempre usa generadores de valores únicos:
+### 1. **Unique Names**
+Always generate unique values:
 ```gherkin
 Given I generate a unique alias as "testUser"
 ```
 
-### 2. **Validación Completa**
-Valida tanto el código de respuesta como el contenido:
+### 2. **Complete Validation**
+Validate both the response code and its content:
 ```gherkin
 Then the response code should be 201
 And the JSON response should contain key "id"
 And the JSON response should contain "username": "${testUser}"
 ```
 
-### 3. **Manejo de Errores**
-Incluye tests para casos de error:
+### 3. **Error Handling**
+Include tests for error cases:
 ```gherkin
 Scenario: Attempt to create user with missing fields
   When I send a POST request to "/api/users" with body:
@@ -255,8 +255,8 @@ Scenario: Attempt to create user with missing fields
   And the JSON response should contain key "error"
 ```
 
-### 4. **Limpieza de Recursos**
-Los recursos se limpian automáticamente, pero puedes limpiar manualmente:
+### 4. **Resource Cleanup**
+Resources are cleaned automatically, but you can remove them manually:
 ```gherkin
 When I send a DELETE request to "/api/users/${userID}"
 Then the response code should be 200
@@ -264,57 +264,57 @@ Then the response code should be 200
 
 ## Troubleshooting
 
-### Problemas Comunes
+### Common Issues
 
-1. **Error de conexión a base de datos**
-   - Verifica que Docker Compose esté corriendo
-   - Revisa las variables de entorno de conexión
+1. **Database connection errors**
+   - Ensure Docker Compose is running.
+   - Check the database environment variables.
 
-2. **Tests fallando por recursos existentes**
-   - Ejecuta con la opción `-c` para limpiar antes
-   - Verifica que no haya tests corriendo en paralelo
+2. **Tests failing due to existing resources**
+   - Run with the `-c` option to clean up before starting.
+   - Make sure no tests are running in parallel.
 
-3. **Errores de autenticación**
-   - Verifica que las credenciales de test sean correctas
-   - Revisa que el servidor esté corriendo
+3. **Authentication errors**
+   - Verify the test credentials.
+   - Check that the server is running.
 
-4. **Timeouts en tests**
-   - Aumenta el timeout en la configuración
-   - Verifica la conectividad de red
+4. **Test timeouts**
+   - Increase the timeout in the configuration.
+   - Verify network connectivity.
 
-### Logs de Debug
+### Debug Logs
 ```bash
-# Habilitar logs detallados
+# Enable detailed logs
 export GODOG_DEBUG=true
 go test -v -tags=integration ./Test/integration/...
 ```
 
-## Contribución
+## Contributing
 
-### Agregar Nuevos Tests
+### Adding New Tests
 
-1. **Crear archivo de feature**:
+1. **Create a feature file**
    ```bash
-   touch Test/integration/features/nueva-funcionalidad.feature
+   touch Test/integration/features/new-feature.feature
    ```
 
-2. **Implementar pasos** (si es necesario):
-   - Agregar funciones en `steps.go`
-   - Registrar en `InitializeScenario`
+2. **Implement steps** (if needed):
+   - Add functions in `steps.go`.
+   - Register them in `InitializeScenario`.
 
-3. **Ejecutar tests**:
+3. **Run the tests**:
    ```bash
-   ./scripts/run-all-integration-tests.bash -f nueva-funcionalidad.feature
+   ./scripts/run-all-integration-tests.bash -f new-feature.feature
    ```
 
-### Convenciones de Nomenclatura
+### Naming Conventions
 
-- **Archivos de feature**: `kebab-case.feature`
-- **Escenarios**: `TC01 - Descripción del test`
-- **Variables**: `camelCase` o `snake_case`
+- **Feature files**: `kebab-case.feature`
+- **Scenarios**: `TC01 - Test description`
+- **Variables**: `camelCase` or `snake_case`
 - **Tags**: `@smoke`, `@regression`, `@critical`
 
-## Integración Continua
+## Continuous Integration
 
 ### GitHub Actions
 ```yaml
@@ -333,8 +333,8 @@ stage('Integration Tests') {
 }
 ```
 
-## Recursos Adicionales
+## Additional Resources
 
-- [Documentación de Godog](https://github.com/cucumber/godog)
-- [Sintaxis Gherkin](https://cucumber.io/docs/gherkin/)
-- [Testing en Go](https://golang.org/pkg/testing/) 
+- [Godog Documentation](https://github.com/cucumber/godog)
+- [Gherkin Syntax](https://cucumber.io/docs/gherkin/)
+- [Testing in Go](https://golang.org/pkg/testing/)

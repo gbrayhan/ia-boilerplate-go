@@ -243,7 +243,7 @@ func (h *Handler) UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	// Verificar que el medicamento existe
+	// Verify the medicine exists
 	var existingMedicine repository.Medicine
 	if err := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&existingMedicine).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -260,13 +260,13 @@ func (h *Handler) UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	// Preparar los campos a actualizar
+	// Prepare fields to update
 	updates := make(map[string]interface{})
 	updates["updated_at"] = time.Now()
 
-	// Validar y agregar cada campo si está presente en el request
+	// Validate and add each field if present in the request
 	if req.EANCode != nil {
-		// Verificar que el EAN code no esté duplicado (excluyendo el registro actual)
+		// Check that the EAN code is not duplicated (excluding the current record)
 		var duplicateCheck repository.Medicine
 		if err := h.Repository.DB.Where("ean_code = ? AND id != ? AND is_deleted = ?", *req.EANCode, id, false).First(&duplicateCheck).Error; err == nil {
 			c.JSON(http.StatusConflict, gin.H{"error": "EAN code already exists"})
@@ -333,13 +333,13 @@ func (h *Handler) UpdateMedicine(c *gin.Context) {
 		updates["unit_type"] = unitType
 	}
 
-	// Si no hay campos para actualizar, retornar error
+	// Return an error if there are no fields to update
 	if len(updates) <= 1 { // Solo updated_at
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// Realizar la actualización
+	// Perform the update
 	if err := h.Repository.DB.Model(&repository.Medicine{}).
 		Where("id = ? AND is_deleted = ?", id, false).
 		Updates(updates).Error; err != nil {
@@ -347,7 +347,7 @@ func (h *Handler) UpdateMedicine(c *gin.Context) {
 		return
 	}
 
-	// Obtener el medicamento actualizado
+	// Retrieve the updated medicine
 	var updatedMedicine repository.Medicine
 	if err := h.Repository.DB.Where("id = ? AND is_deleted = ?", id, false).First(&updatedMedicine).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated medicine"})

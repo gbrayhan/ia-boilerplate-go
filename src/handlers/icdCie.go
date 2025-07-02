@@ -96,17 +96,17 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 		return
 	}
 
-	// Verificar que el registro existe
+	// Verify the record exists
 	var existingRecord repository.ICDCie
 	if err := h.Repository.DB.First(&existingRecord, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "ICDCie record not found"})
 		return
 	}
 
-	// Preparar los campos a actualizar
+	// Prepare fields to update
 	updates := make(map[string]interface{})
 
-	// Validar y agregar cada campo si está presente en el request
+	// Validate and add each field if present in the request
 	if req.CieVersion != nil {
 		cieVersion := repository.CieVersionType(*req.CieVersion)
 		if !cieVersion.IsValid() {
@@ -117,7 +117,7 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 	}
 
 	if req.Code != nil {
-		// Verificar que el código no esté duplicado (excluyendo el registro actual)
+		// Check that the code is not duplicated (excluding the current record)
 		if *req.Code != existingRecord.Code {
 			var duplicateCheck repository.ICDCie
 			if err := h.Repository.DB.Where("code = ?", *req.Code).First(&duplicateCheck).Error; err == nil {
@@ -143,13 +143,13 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 		updates["chapter_title"] = *req.ChapterTitle
 	}
 
-	// Si no hay campos para actualizar, retornar error
+	// Return an error if there are no fields to update
 	if len(updates) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "No fields to update"})
 		return
 	}
 
-	// Realizar la actualización
+	// Perform the update
 	if err := h.Repository.DB.Model(&repository.ICDCie{}).
 		Where("id = ?", id).
 		Updates(updates).Error; err != nil {
@@ -157,7 +157,7 @@ func (h *Handler) UpdateICDCie(c *gin.Context) {
 		return
 	}
 
-	// Obtener el registro actualizado
+	// Retrieve the updated record
 	var updatedRecord repository.ICDCie
 	if err := h.Repository.DB.First(&updatedRecord, id).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve updated ICDCie record"})
