@@ -74,7 +74,7 @@ Feature: Medicine Management
       """
     Then the response code should be 500 or 409
     And the JSON response field "error" should contain string "Could not create medicine"
-    And the JSON response field "error" should contain string "duplicate key value violates unique constraint"
+    And the JSON response field "error" should contain string "duplicate code"
 
   Scenario: TC01.2 - Attempt to create a medicine with missing required fields
     When I send a POST request to "/api/medicines" with body:
