@@ -89,20 +89,20 @@ Error handling tests:
 
 ```bash
 # Run all tests
-./scripts/run-all-integration-tests.bash
+./scripts/run-integration-test.bash
 
 # Run specific feature files
-./scripts/run-all-integration-tests.bash -f auth.feature
-./scripts/run-all-integration-tests.bash -f users.feature
+./scripts/run-integration-test.bash -f auth.feature
+./scripts/run-integration-test.bash -f users.feature
 
 # Run with Docker
-./scripts/run-all-integration-tests.bash -d -v
+./scripts/run-integration-test.bash -d -v
 
 # Run with specific tags
-./scripts/run-all-integration-tests.bash -t @smoke
+./scripts/run-integration-test.bash -t @smoke
 
 # Verbose mode
-./scripts/run-all-integration-tests.bash -v
+./scripts/run-integration-test.bash -v
 ```
 
 ### Option 2: Direct Command
@@ -125,19 +125,22 @@ INTEGRATION_SCENARIO_TAGS=@smoke go test -tags=integration ./Test/integration/..
 
 ```bash
 # Run tests with Docker
-docker-compose run --rm app go test -tags=integration ./Test/integration/...
+docker compose run --rm ia-boilerplate go test -tags=integration ./Test/integration/...
 
 # Verbose output
-docker-compose run --rm app go test -v -tags=integration ./Test/integration/...
+docker compose run --rm ia-boilerplate go test -v -tags=integration ./Test/integration/...
 ```
 
 ## Environment Variables
+
+Before running the tests make sure all variables from your `.env` file are loaded.
+Only a few optional variables are shown below:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `INTEGRATION_FEATURE_FILE` | Run only one feature file | `auth.feature` |
 | `INTEGRATION_SCENARIO_TAGS` | Run scenarios with specific tags | `@smoke` |
-| `INTEGRATION_TEST_MODE` | Enable testing mode | `true` |
+| `INTEGRATION_TEST` | Enable testing mode | `true` |
 
 ## Example Scenario Structure
 
@@ -304,7 +307,7 @@ go test -v -tags=integration ./Test/integration/...
 
 3. **Run the tests**:
    ```bash
-   ./scripts/run-all-integration-tests.bash -f new-feature.feature
+   ./scripts/run-integration-test.bash -f new-feature.feature
    ```
 
 ### Naming Conventions
@@ -320,15 +323,15 @@ go test -v -tags=integration ./Test/integration/...
 ```yaml
 - name: Run Integration Tests
   run: |
-    docker-compose up -d
-    ./scripts/run-all-integration-tests.bash -d -v
+    docker compose up -d
+    ./scripts/run-integration-test.bash -d -v
 ```
 
 ### Jenkins Pipeline
 ```groovy
 stage('Integration Tests') {
     steps {
-        sh './scripts/run-all-integration-tests.bash -d -v'
+        sh './scripts/run-integration-test.bash -d -v'
     }
 }
 ```

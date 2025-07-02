@@ -116,6 +116,7 @@ Open your browser at `http://localhost:8080` and you're ready!
 |  POST  | `/login`                          | Authenticate: returns access & refresh JWT |
 |  POST  | `/access-token/refresh`           | Refresh access token with refresh token    |
 |  GET   | `/api/device`                     | Device info (requires JWT)                 |
+|  GET   | `/api/health-check-auth`          | Authenticated health check          |
 |  GET   | `/api/users`                      | List users                                 |
 |  GET   | `/api/users/:id`                  | Get user by ID                             |
 |  POST  | `/api/users`                      | Create new user                            |
