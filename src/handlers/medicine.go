@@ -72,7 +72,7 @@ func (h *Handler) CreateMedicine(c *gin.Context) {
 	}
 
 	var existing repository.Medicine
-	if err := h.Repository.DB.Where("ean_code = ?", req.EANCode).First(&existing).Error; err == nil {
+	if err := h.Repository.DB.Where("ean_code = ? AND is_deleted = ?", req.EANCode, false).First(&existing).Error; err == nil {
 		c.JSON(http.StatusConflict, gin.H{"error": "Could not create medicine: duplicate code"})
 		return
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
