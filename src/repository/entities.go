@@ -45,8 +45,11 @@ type DeviceDetails struct {
 	UpdatedAt      time.Time `gorm:"autoUpdateTime" json:"updatedAt"`
 }
 type ICDCie struct {
-	ID           int    `gorm:"primaryKey" json:"id"`
-	CieVersion   string `gorm:"type:varchar(2)" json:"cieVersion"`
+	ID int `gorm:"primaryKey" json:"id"`
+	// CieVersion holds the ICD code version string like "CIE-10" or "CIE-11".
+	// The previous size of 2 characters was too small and caused database
+	// errors when inserting typical values, so it has been increased.
+	CieVersion   string `gorm:"type:varchar(20)" json:"cieVersion"`
 	Code         string `gorm:"type:varchar(20)" json:"code"`
 	Description  string `gorm:"type:varchar(255)" json:"description"`
 	ChapterNo    string `gorm:"type:varchar(10)" json:"chapterNo"`
