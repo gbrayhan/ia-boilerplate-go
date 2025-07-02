@@ -50,7 +50,7 @@ type ICDCie struct {
 	// The previous size of 2 characters was too small and caused database
 	// errors when inserting typical values, so it has been increased.
 	CieVersion   string `gorm:"type:varchar(20)" json:"cieVersion"`
-	Code         string `gorm:"type:varchar(20)" json:"code"`
+	Code         string `gorm:"type:varchar(20);unique" json:"code"`
 	Description  string `gorm:"type:varchar(255)" json:"description"`
 	ChapterNo    string `gorm:"type:varchar(10)" json:"chapterNo"`
 	ChapterTitle string `gorm:"type:varchar(255)" json:"chapterTitle"`
